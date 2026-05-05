@@ -5,13 +5,12 @@ import { getCurrentUser } from "@/lib/auth-server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { RealtimeRefresher } from "@/app/_components/realtime-refresher";
 import { AnimateIn } from "@/app/_components/animate";
-import { Avatar } from "@/app/_components/avatar";
 import { RequestChipsForm } from "./request-chips-form";
 import { ClosedSummary } from "@/app/dealer/[code]/closed-summary";
 import { WelcomeOverlay } from "./welcome-overlay";
 import { ActionButtons } from "./action-buttons";
-import { CommunityCards } from "@/app/_components/community-cards";
 import { DealOverlay } from "@/app/_components/deal-overlay";
+import { PokerTable } from "./poker-table";
 import { WaitingWinnerOverlay } from "@/app/_components/waiting-winner-overlay";
 import { WaitingTurnOverlay } from "@/app/_components/waiting-turn-overlay";
 import { WinCelebration } from "@/app/_components/win-celebration";
@@ -162,13 +161,33 @@ export default async function PlayRoomPage({
   const myCurrentBet = myParticipant?.current_bet_cop ?? 0;
   const toCall = currentBet - myCurrentBet;
 
-  // Competidores ordenados ciclicamente desde MI asiento (yo no aparezco)
-  const competitors = (seats ?? [])
-    .filter((s) => s.user_id && s.user_id !== user.id)
-    .sort((a, b) => {
-      const aDist = (a.seat_index - mySeat.seat_index + 1000) % 1000;
-      const bDist = (b.seat_index - mySeat.seat_index + 1000) % 1000;
-      return aDist - bDist;
+  // Datos para la PokerTable simulada (incluye al usuario)
+  const tableSeats = (seats ?? [])
+    .filter((s) => s.user_id)
+    .map((s) => {
+      const u = s.user_id ? usersById.get(s.user_id) : null;
+      const p = participantBySeat.get(s.id);
+      return {
+        id: s.id,
+        seatIndex: s.seat_index,
+        userId: s.user_id,
+        nickname: u?.nickname ?? "?",
+        avatarUrl: u?.avatar_url ?? null,
+        chipsBalance: s.chips_balance_cop,
+        currentBet: p?.current_bet_cop ?? 0,
+        status: (p?.status ?? s.status) as
+          | "IN"
+          | "FOLDED"
+          | "ALL_IN"
+          | "WAITING"
+          | "ACTIVE"
+          | "SITTING_OUT"
+          | "LEFT",
+        isMyTurn: activeHand?.current_turn_seat_id === s.id,
+        isMe: s.user_id === user.id,
+        isDealerButton:
+          !!activeHand && activeHand.dealer_seat_index === s.seat_index,
+      };
     });
 
   // Info del seat con el turno actual (para el overlay)
@@ -305,27 +324,14 @@ export default async function PlayRoomPage({
 
         {activeHand && (
           <AnimateIn preset="fadeUp" delay={0.12}>
-            <section className="felt-card rounded-xl p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-zinc-300/70">
-                    Mano #{activeHand.hand_number}
-                  </p>
-                  <p className="text-sm font-semibold">{activeHand.phase}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-widest text-zinc-300/70">
-                    Pozo
-                  </p>
-                  <p className="text-2xl font-bold tabular-nums">
-                    {formatCop(activeHand.pot_cop)}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3">
-                <CommunityCards phase={activeHand.phase} />
-              </div>
-            </section>
+            <PokerTable
+              seats={tableSeats}
+              mySeatIndex={mySeat.seat_index}
+              totalSeats={room.max_seats}
+              potCop={activeHand.pot_cop}
+              phase={activeHand.phase}
+              handNumber={activeHand.hand_number}
+            />
           </AnimateIn>
         )}
 
@@ -397,84 +403,6 @@ export default async function PlayRoomPage({
           </AnimateIn>
         )}
 
-        {/* Competidores con sus posiciones */}
-        <AnimateIn preset="fadeUp" delay={0.24}>
-          <section className="felt-card rounded-xl p-4">
-            <h2 className="mb-3 text-sm uppercase tracking-widest text-zinc-300/70">
-              Competidores
-            </h2>
-            {competitors.length === 0 ? (
-              <p className="text-sm text-zinc-400">
-                Aún no hay otros jugadores en la mesa.
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {competitors.map((seat) => {
-                  const u = seat.user_id ? usersById.get(seat.user_id) : null;
-                  const p = participantBySeat.get(seat.id);
-                  const isTurn = activeHand?.current_turn_seat_id === seat.id;
-                  const isDealerBtn =
-                    activeHand?.dealer_seat_index === seat.seat_index;
-                  const isFolded = p?.status === "FOLDED";
-                  const isOut =
-                    seat.chips_balance_cop === 0 || isFolded;
-                  return (
-                    <li
-                      key={seat.id}
-                      className={`flex items-center gap-3 rounded-md border px-3 py-2 transition ${
-                        isTurn
-                          ? "border-amber-500/70 bg-amber-950/30"
-                          : isFolded
-                            ? "border-zinc-800/60 bg-black/20 opacity-50"
-                            : "border-white/5 bg-black/30"
-                      }`}
-                    >
-                      <Avatar
-                        nickname={u?.nickname ?? "?"}
-                        avatarUrl={u?.avatar_url}
-                        disabled={isOut}
-                        size={40}
-                        ringColor={isTurn ? "#f59e0b" : undefined}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 font-semibold">
-                          #{seat.seat_index} · {u?.nickname ?? "?"}
-                          {isDealerBtn && (
-                            <span
-                              title="Botón del dealer"
-                              className="rounded-full bg-zinc-100 px-1.5 text-[10px] font-bold text-zinc-900"
-                            >
-                              D
-                            </span>
-                          )}
-                          {isTurn && (
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">
-                              Turno
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-zinc-400">
-                          {p ? p.status : seat.status}
-                          {p && p.current_bet_cop > 0 && (
-                            <>
-                              {" · "}
-                              <span className="text-amber-300">
-                                {formatCop(p.current_bet_cop)}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-sm tabular-nums">
-                        {formatCop(seat.chips_balance_cop)}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-        </AnimateIn>
       </div>
     </main>
   );
