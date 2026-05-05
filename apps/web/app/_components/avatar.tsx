@@ -17,7 +17,9 @@ export interface AvatarProps {
 
 // Avatar circular. Si hay avatarUrl (Google), lo usa; si no, fallback a
 // inicial sobre fondo coloreado deterministamente desde el nickname.
-// Cuando disabled, se muestra en escala de grises y opacidad reducida.
+// El contenedor `display: block` con `aspect-ratio: 1/1` y `object-cover`
+// garantiza que la imagen quede SIEMPRE perfectamente circular, sin
+// importar la proporción original.
 export function Avatar({
   nickname,
   avatarUrl,
@@ -29,15 +31,14 @@ export function Avatar({
   const hue = hashHue(nickname);
   const bg = `hsl(${hue}, 55%, 45%)`;
 
-  const ring = ringColor
-    ? { boxShadow: `0 0 0 2px ${ringColor}` }
-    : undefined;
-
   const baseStyle: React.CSSProperties = {
     width: size,
     height: size,
+    minWidth: size,
+    minHeight: size,
+    aspectRatio: "1 / 1",
     fontSize: size * 0.42,
-    ...ring,
+    ...(ringColor ? { boxShadow: `0 0 0 2px ${ringColor}` } : {}),
   };
 
   if (avatarUrl) {
@@ -45,7 +46,7 @@ export function Avatar({
       <span
         title={nickname}
         style={baseStyle}
-        className={`inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-900 ${
+        className={`relative block overflow-hidden rounded-full bg-zinc-900 ${
           disabled ? "opacity-40 grayscale" : ""
         }`}
       >
@@ -54,7 +55,8 @@ export function Avatar({
           src={avatarUrl}
           alt={nickname}
           referrerPolicy="no-referrer"
-          className="h-full w-full object-cover"
+          draggable={false}
+          className="absolute inset-0 h-full w-full select-none object-cover"
         />
       </span>
     );
@@ -67,7 +69,7 @@ export function Avatar({
         ...baseStyle,
         background: disabled ? "#3f3f46" : bg,
       }}
-      className={`inline-flex items-center justify-center rounded-full border border-white/10 font-bold text-white ${
+      className={`inline-flex items-center justify-center rounded-full font-bold text-white ${
         disabled ? "opacity-50" : ""
       }`}
     >

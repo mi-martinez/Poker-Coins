@@ -173,7 +173,9 @@ export function WaitingTurnOverlay({
   const progress =
     remaining !== null ? Math.max(0, Math.min(1, remaining / totalMs)) : 1;
 
-  const RADIUS = 90;
+  // Circle params en viewBox 100×100 (escalado al wrapper). Radio grande
+  // para que el anillo quede pegado al avatar — sin "huecos" extraños.
+  const RADIUS = 48;
   const CIRC = 2 * Math.PI * RADIUS;
   const dashOffset = CIRC * (1 - progress);
   const danger = remaining !== null && remaining < 5000;
@@ -211,43 +213,67 @@ export function WaitingTurnOverlay({
         <div className="mt-2" />
       )}
 
-      {/* Hero: avatar + nombre + countdown */}
+      {/* Hero: avatar central como pieza del diseño con halo + frame */}
       <div className="flex flex-col items-center gap-5">
-        <div ref={avatarWrapRef} className="relative h-56 w-56">
-          {timerEnabled && remaining !== null && (
-            <svg
-              viewBox="0 0 200 200"
-              className="absolute inset-0 -rotate-90"
-              aria-hidden="true"
-            >
-              <circle
-                cx="100"
-                cy="100"
-                r={RADIUS}
-                fill="none"
-                stroke="rgba(255,255,255,0.08)"
-                strokeWidth="6"
-              />
-              <circle
-                cx="100"
-                cy="100"
-                r={RADIUS}
-                fill="none"
-                stroke={danger ? "#ef4444" : "#f59e0b"}
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeDasharray={CIRC}
-                strokeDashoffset={dashOffset}
-                style={{ transition: "stroke-dashoffset 0.2s linear" }}
-              />
-            </svg>
-          )}
-          <div className="absolute inset-6 flex items-center justify-center">
+        <div
+          ref={avatarWrapRef}
+          className="relative flex h-72 w-72 items-center justify-center"
+        >
+          {/* Halo / glow detrás del avatar — lo integra al diseño */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              background: danger
+                ? "radial-gradient(circle, rgba(239,68,68,0.35), transparent 65%)"
+                : "radial-gradient(circle, rgba(245,158,11,0.3), transparent 65%)",
+              filter: "blur(8px)",
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Frame con progress ring tight alrededor del avatar */}
+          <div
+            className="relative flex h-60 w-60 items-center justify-center rounded-full"
+            style={{
+              boxShadow: danger
+                ? "0 0 24px rgba(239,68,68,0.45), 0 0 0 1px rgba(255,255,255,0.06)"
+                : "0 0 24px rgba(245,158,11,0.3), 0 0 0 1px rgba(255,255,255,0.06)",
+            }}
+          >
+            {timerEnabled && remaining !== null && (
+              <svg
+                viewBox="0 0 100 100"
+                className="absolute inset-0 h-full w-full -rotate-90"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={RADIUS}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.12)"
+                  strokeWidth="2.5"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={RADIUS}
+                  fill="none"
+                  stroke={danger ? "#ef4444" : "#f59e0b"}
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeDasharray={CIRC}
+                  strokeDashoffset={dashOffset}
+                  style={{ transition: "stroke-dashoffset 0.2s linear" }}
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            )}
             <Avatar
               nickname={nickname}
               avatarUrl={avatarUrl}
-              size={160}
-              ringColor={danger ? "#ef4444" : "#f59e0b"}
+              size={216}
             />
           </div>
         </div>
