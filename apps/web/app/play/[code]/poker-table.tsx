@@ -58,7 +58,10 @@ export function PokerTable({
   const myIndexInOccupied = occupied.findIndex((s) => s.isMe);
 
   return (
-    <div className="relative w-full" style={{ aspectRatio: "16 / 10" }}>
+    <div
+      className="relative mx-auto w-full max-w-md sm:max-w-lg"
+      style={{ aspectRatio: "16 / 9" }}
+    >
       {/* Sombra de piso */}
       <div
         className="pointer-events-none absolute -inset-x-6 bottom-[-12px] h-8 rounded-[50%] blur-2xl"
@@ -101,20 +104,20 @@ export function PokerTable({
       />
 
       {/* Centro: stack de fichas + monto + cartas comunitarias + fase */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5">
         <PotChipStack potCop={potCop} />
         <div className="text-center">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-zinc-100/70">
+          <div className="text-[8px] uppercase tracking-[0.25em] text-zinc-100/70">
             Pot · Mano #{handNumber}
           </div>
-          <div className="font-display text-3xl font-bold tabular-nums text-zinc-50 drop-shadow sm:text-4xl">
+          <div className="font-display text-xl font-bold tabular-nums text-zinc-50 drop-shadow sm:text-2xl">
             {formatCop(potCop)}
           </div>
         </div>
-        <div className="scale-75 sm:scale-90">
+        <div className="scale-[0.55] sm:scale-75">
           <CommunityCards phase={phase} />
         </div>
-        <div className="text-[10px] font-semibold uppercase tracking-[0.4em] text-zinc-100/60">
+        <div className="text-[8px] font-semibold uppercase tracking-[0.3em] text-zinc-100/60">
           {phase}
         </div>
       </div>
@@ -157,7 +160,7 @@ export function PokerTable({
                 <Avatar
                   nickname={seat.nickname}
                   avatarUrl={seat.avatarUrl}
-                  size={48}
+                  size={36}
                   ringColor={
                     seat.isMyTurn
                       ? "#f59e0b"
@@ -169,7 +172,7 @@ export function PokerTable({
                 />
                 {seat.isDealerButton && (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-900 ring-2 ring-felt"
+                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-100 text-[8px] font-bold text-zinc-900 ring-1 ring-zinc-900"
                     title="Botón del dealer"
                   >
                     D
@@ -178,31 +181,31 @@ export function PokerTable({
               </div>
               {/* Tag pill con nombre + stack */}
               <div
-                className={`flex flex-col items-center rounded-md px-2 py-0.5 text-center backdrop-blur whitespace-nowrap shadow ${
+                className={`flex flex-col items-center rounded-md px-1.5 py-0.5 text-center backdrop-blur whitespace-nowrap shadow ${
                   seat.isMyTurn
                     ? "bg-amber-600/90 text-zinc-950 ring-1 ring-amber-400"
                     : "bg-black/75 text-zinc-100 ring-1 ring-white/10"
                 }`}
               >
-                <div className="text-[11px] font-semibold leading-tight">
+                <div className="text-[9px] font-semibold leading-tight">
                   {seat.isMe ? "Tú" : seat.nickname}
                 </div>
-                <div className="text-[10px] tabular-nums leading-tight opacity-90">
+                <div className="text-[9px] tabular-nums leading-tight opacity-90">
                   {formatCop(seat.chipsBalance)}
                 </div>
               </div>
               {seat.currentBet > 0 && (
-                <div className="rounded-full bg-amber-900/80 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-amber-100 ring-1 ring-amber-500/40">
+                <div className="rounded-full bg-amber-900/80 px-1.5 py-0 text-[9px] font-semibold tabular-nums text-amber-100 ring-1 ring-amber-500/40">
                   {formatCop(seat.currentBet)}
                 </div>
               )}
               {seat.status === "FOLDED" && (
-                <div className="rounded bg-red-950/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-red-300">
+                <div className="rounded bg-red-950/70 px-1 py-0 text-[8px] font-semibold uppercase tracking-widest text-red-300">
                   fold
                 </div>
               )}
               {seat.status === "ALL_IN" && (
-                <div className="rounded bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-amber-200">
+                <div className="rounded bg-amber-950/80 px-1 py-0 text-[8px] font-semibold uppercase tracking-widest text-amber-200">
                   all-in
                 </div>
               )}
