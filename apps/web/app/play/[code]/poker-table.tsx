@@ -103,22 +103,17 @@ export function PokerTable({
         }}
       />
 
-      {/* Centro: stack de fichas + monto + cartas comunitarias + fase */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-        <PotChipStack potCop={potCop} />
-        <div className="text-center">
-          <div className="text-[8px] uppercase tracking-[0.25em] text-zinc-100/70">
-            Pot · Mano #{handNumber}
-          </div>
-          <div className="font-display text-xl font-bold tabular-nums text-zinc-50 drop-shadow sm:text-2xl">
-            {formatCop(potCop)}
-          </div>
+      {/* Centro: monto del pozo + cartas comunitarias. Compacto para
+          dejar espacio a los avatares en los extremos. */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1">
+        <div className="font-display text-xl font-bold tabular-nums text-zinc-50 drop-shadow sm:text-2xl">
+          {formatCop(potCop)}
         </div>
-        <div className="scale-[0.55] sm:scale-75">
+        <div className="scale-[0.55] sm:scale-[0.65]">
           <CommunityCards phase={phase} />
         </div>
         <div className="text-[8px] font-semibold uppercase tracking-[0.3em] text-zinc-100/60">
-          {phase}
+          #{handNumber} · {phase}
         </div>
       </div>
 
@@ -128,10 +123,11 @@ export function PokerTable({
           (i - (myIndexInOccupied >= 0 ? myIndexInOccupied : 0) + n) % n;
         const angleDeg = 90 + (offset / n) * 360;
         const angleRad = (angleDeg * Math.PI) / 180;
-        // Margen amplio: el avatar nunca llega al borde del óvalo. La
-        // columna avatar+tag+bet cabe completa dentro del fieltro.
+        // Margen calculado: el avatar va cerca del borde del óvalo
+        // pero deja espacio suficiente para tag pill + bet sin
+        // sobreponerse al centro (cartas comunitarias).
         const xRatio = 0.4;
-        const yRatio = 0.22;
+        const yRatio = 0.32;
         const x = 50 + Math.cos(angleRad) * xRatio * 100;
         const y = 50 + Math.sin(angleRad) * yRatio * 100;
 
@@ -151,8 +147,9 @@ export function PokerTable({
             }}
           >
             <div className="flex flex-col items-center gap-0.5">
-              {/* Mini cartas back si está en la mano */}
-              {inHand && !isOut && (
+              {/* Mini cartas back si está en la mano (solo para
+                  oponentes — el usuario tiene sus cartas físicas) */}
+              {inHand && !isOut && !seat.isMe && (
                 <div className="flex -space-x-1">
                   <CardBack />
                   <CardBack offset />
@@ -229,7 +226,7 @@ export function PokerTable({
 function CardBack({ offset = false }: { offset?: boolean }) {
   return (
     <div
-      className="h-7 w-5 rounded-sm border border-white/30 shadow-sm"
+      className="relative h-5 w-3.5 rounded-sm border border-white/30 shadow-sm"
       style={{
         background:
           "linear-gradient(135deg, #0a4d2c 0%, #084d2c 50%, #063b21 100%)",
@@ -242,36 +239,3 @@ function CardBack({ offset = false }: { offset?: boolean }) {
   );
 }
 
-// Stack visual de fichas representando el pozo
-function PotChipStack({ potCop }: { potCop: number }) {
-  if (potCop <= 0) return null;
-  // 4 colores de chips representativos
-  const stack: { bg: string; ring: string }[] = [
-    { bg: "#f5f5f5", ring: "#a3a3a3" },
-    { bg: "#d33232", ring: "#7f1d1d" },
-    { bg: "#2d6cdf", ring: "#1e3a8a" },
-    { bg: "#1a1a1a", ring: "#525252" },
-  ];
-  return (
-    <div className="flex items-end gap-1">
-      {stack.map((c, i) => (
-        <div key={i} className="flex flex-col items-center">
-          {/* Pequeño stack vertical de 3 chips */}
-          {Array.from({ length: 3 }).map((_, j) => (
-            <div
-              key={j}
-              className="rounded-full border-2 shadow"
-              style={{
-                width: 18,
-                height: 4,
-                background: c.bg,
-                borderColor: c.ring,
-                marginTop: j === 0 ? 0 : -2,
-              }}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
