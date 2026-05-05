@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  /* Felt palette */
+  --felt-base: #0a4d2c;
+  --felt-deep: #063b21;
+  --felt-rim: #5a3c1f;
+}
+
+html,
+body {
+  height: 100%;
+  color: #f5f5f5;
+}
+
+/* Tipografía: Federo para títulos, Roboto para texto. */
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+}
+
+/* Fondo: fieltro de mesa de poker.
+   - Color base verde profundo
+   - Capa SVG con feTurbulence para textura de tejido
+   - Vignette radial para foco central */
+body {
+  background-color: var(--felt-base);
+  background-image:
+    radial-gradient(
+      ellipse at center,
+      rgba(255, 255, 255, 0.05) 0%,
+      transparent 40%,
+      rgba(0, 0, 0, 0.6) 100%
+    ),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size:
+    100% 100%,
+    220px 220px;
+  background-attachment: fixed;
+}
+
+/* Cards/secciones más legibles sobre el fieltro */
+.felt-card {
+  background-color: rgba(10, 10, 10, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes felt-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+  }
+}
+
+.felt-pulse {
+  animation: felt-pulse 1.8s ease-out infinite;
+}
