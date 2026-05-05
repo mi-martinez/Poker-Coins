@@ -49,17 +49,58 @@ export function PokerTable({
 
   return (
     <div className="relative w-full" style={{ aspectRatio: "16 / 10" }}>
-      {/* Borde exterior tipo madera */}
-      <div className="absolute inset-0 rounded-[50%] bg-gradient-to-br from-amber-950/80 to-amber-900/40 shadow-2xl" />
-      {/* Fieltro interior */}
+      {/* Sombra de piso (elevación) */}
       <div
-        className="absolute inset-3 rounded-[50%] border border-white/5"
+        className="pointer-events-none absolute -inset-x-6 bottom-[-30px] h-12 rounded-[50%] blur-2xl"
+        style={{ background: "radial-gradient(ellipse, rgba(0,0,0,0.6), transparent 70%)" }}
+        aria-hidden="true"
+      />
+
+      {/* Borde exterior tipo madera con relieve 3D */}
+      <div
+        className="absolute inset-0"
         style={{
+          borderRadius: "40%",
           background:
-            "radial-gradient(ellipse at center, rgba(31,138,63,0.95) 0%, rgba(13,107,63,1) 55%, rgba(8,77,45,1) 100%)",
-          boxShadow:
-            "inset 0 0 60px rgba(0,0,0,0.55), inset 0 0 18px rgba(0,0,0,0.4)",
+            "linear-gradient(155deg, #5a371a 0%, #3a210d 55%, #2a1808 100%)",
+          boxShadow: [
+            "0 28px 60px -12px rgba(0,0,0,0.75)", // sombra elevación
+            "0 8px 18px rgba(0,0,0,0.4)", // sombra cercana
+            "inset 0 5px 8px rgba(255,255,255,0.07)", // highlight superior
+            "inset 0 -10px 16px rgba(0,0,0,0.55)", // sombra inferior interior
+            "inset 0 0 0 1px rgba(255,255,255,0.04)", // borde sutil
+          ].join(", "),
         }}
+      />
+
+      {/* Fieltro interior con profundidad */}
+      <div
+        className="absolute inset-4"
+        style={{
+          borderRadius: "40%",
+          background: [
+            "radial-gradient(ellipse at center top, rgba(46,179,87,0.45) 0%, transparent 55%)",
+            "radial-gradient(ellipse at center, rgba(31,138,63,0.98) 0%, rgba(13,107,63,1) 50%, rgba(8,77,45,1) 100%)",
+          ].join(", "),
+          boxShadow: [
+            "inset 0 0 80px rgba(0,0,0,0.55)", // vignette interior
+            "inset 0 14px 28px rgba(0,0,0,0.5)", // sombra del borde superior (caída)
+            "inset 0 -3px 0 rgba(255,255,255,0.04)", // hilo de luz inferior
+            "inset 0 0 0 1px rgba(255,255,255,0.05)", // borde
+          ].join(", "),
+        }}
+      />
+
+      {/* Reflejo especular en el borde superior */}
+      <div
+        className="pointer-events-none absolute inset-4"
+        style={{
+          borderRadius: "40%",
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 25%)",
+          mixBlendMode: "overlay",
+        }}
+        aria-hidden="true"
       />
 
       {/* Centro: pozo + cartas comunitarias */}
