@@ -18,7 +18,14 @@ export interface PokerSeat {
   avatarUrl: string | null;
   chipsBalance: number;
   currentBet: number;
-  status: "IN" | "FOLDED" | "ALL_IN" | "WAITING" | "ACTIVE" | "SITTING_OUT" | "LEFT";
+  status:
+    | "IN"
+    | "FOLDED"
+    | "ALL_IN"
+    | "WAITING"
+    | "ACTIVE"
+    | "SITTING_OUT"
+    | "LEFT";
   isMyTurn: boolean;
   isMe: boolean;
   isDealerButton: boolean;
@@ -33,9 +40,10 @@ interface Props {
   handNumber: number;
 }
 
-// Mesa ovalada con avatares dispuestos por el perímetro. El usuario
-// (mySeatIndex) queda en el bottom-center y los demás se distribuyen
-// cíclicamente. Cartas comunitarias y pozo en el centro.
+// Mesa 2D estilo cenital (referencia: PokerStars). Plana, sin
+// perspective ni rotateX. Avatares con tag pill alrededor del óvalo.
+// Cartas back pequeñas junto a cada jugador IN. Pot al centro con
+// stack de fichas + monto.
 export function PokerTable({
   seats,
   mySeatIndex,
@@ -44,131 +52,78 @@ export function PokerTable({
   phase,
   handNumber,
 }: Props) {
+  void mySeatIndex;
   const occupied = seats.filter((s) => s.userId);
   const n = occupied.length;
-
-  // Tilt usado para perspectiva 3D — counter-aplicado a textos y avatares
-  // para que se lean rectos a pesar de la rotación de la mesa.
-  const TILT = 18;
+  const myIndexInOccupied = occupied.findIndex((s) => s.isMe);
 
   return (
-    <div className="w-full" style={{ perspective: "1500px" }}>
+    <div className="relative w-full" style={{ aspectRatio: "16 / 10" }}>
+      {/* Sombra de piso */}
       <div
-        className="relative"
+        className="pointer-events-none absolute -inset-x-6 bottom-[-12px] h-8 rounded-[50%] blur-2xl"
         style={{
-          aspectRatio: "16 / 10",
-          transform: `rotateX(${TILT}deg)`,
-          transformStyle: "preserve-3d",
-          transformOrigin: "center 55%",
-        }}
-      >
-        {/* Sombra de piso (elevación) */}
-        <div
-          className="pointer-events-none absolute -inset-x-8 bottom-[-50px] h-16 rounded-[50%] blur-3xl"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(0,0,0,0.75), transparent 70%)",
-            transform: "translateZ(-30px)",
-          }}
-          aria-hidden="true"
-        />
-
-        {/* Borde exterior tipo madera con extrusión 3D (stack de sombras
-            simulando grosor del tablero) */}
-        <div
-          className="absolute inset-0"
-          style={{
-            borderRadius: "40%",
-            background:
-              "linear-gradient(155deg, #6b3f1f 0%, #4a2c12 50%, #2a1808 100%)",
-            boxShadow: [
-              // extrusión: pila de sombras descendentes simulan grosor
-              "0 3px 0 #4a2c12",
-              "0 6px 0 #422810",
-              "0 9px 0 #3a230d",
-              "0 12px 0 #321f0b",
-              "0 15px 0 #2a1809",
-              "0 18px 0 #241407",
-              "0 22px 0 #1c1005",
-              "0 26px 0 #160c04",
-              "0 32px 0 #110a03",
-              // sombra de piso debajo del extrusión
-              "0 50px 60px -10px rgba(0,0,0,0.7)",
-              "0 30px 30px -8px rgba(0,0,0,0.45)",
-              // highlight superior (luz cenital)
-              "inset 0 5px 8px rgba(255,255,255,0.08)",
-              // sombra inferior interna del rim
-              "inset 0 -10px 16px rgba(0,0,0,0.55)",
-              "inset 0 0 0 1px rgba(255,255,255,0.05)",
-            ].join(", "),
-          }}
-        />
-
-      {/* Fieltro interior con profundidad */}
-      <div
-        className="absolute inset-4"
-        style={{
-          borderRadius: "40%",
-          background: [
-            "radial-gradient(ellipse at center top, rgba(46,179,87,0.45) 0%, transparent 55%)",
-            "radial-gradient(ellipse at center, rgba(31,138,63,0.98) 0%, rgba(13,107,63,1) 50%, rgba(8,77,45,1) 100%)",
-          ].join(", "),
-          boxShadow: [
-            "inset 0 0 80px rgba(0,0,0,0.55)", // vignette interior
-            "inset 0 14px 28px rgba(0,0,0,0.5)", // sombra del borde superior (caída)
-            "inset 0 -3px 0 rgba(255,255,255,0.04)", // hilo de luz inferior
-            "inset 0 0 0 1px rgba(255,255,255,0.05)", // borde
-          ].join(", "),
-        }}
-      />
-
-      {/* Reflejo especular en el borde superior */}
-      <div
-        className="pointer-events-none absolute inset-4"
-        style={{
-          borderRadius: "40%",
           background:
-            "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 25%)",
-          mixBlendMode: "overlay",
+            "radial-gradient(ellipse, rgba(0,0,0,0.55), transparent 70%)",
         }}
         aria-hidden="true"
       />
 
-      {/* Centro: pozo + cartas comunitarias — counter-rotateX para que
-          se lea recto a pesar del tilt 3D de la mesa */}
+      {/* Rim exterior — borde simple oscuro */}
       <div
-        className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-6"
+        className="absolute inset-0"
         style={{
-          transform: `rotateX(-${TILT}deg)`,
-          transformStyle: "preserve-3d",
+          borderRadius: "40%",
+          background:
+            "linear-gradient(180deg, #1a3d2a 0%, #0d2618 100%)",
+          boxShadow: [
+            "0 10px 30px rgba(0,0,0,0.45)",
+            "inset 0 -3px 8px rgba(0,0,0,0.5)",
+            "inset 0 3px 6px rgba(255,255,255,0.06)",
+            "inset 0 0 0 1px rgba(255,255,255,0.05)",
+          ].join(", "),
         }}
-      >
+      />
+
+      {/* Fieltro con pattern de puntitos sutiles */}
+      <div
+        className="absolute inset-3"
+        style={{
+          borderRadius: "38%",
+          background: [
+            "radial-gradient(ellipse at center, rgba(46,179,87,0.6) 0%, rgba(31,138,63,1) 50%, rgba(13,107,63,1) 100%)",
+            // patrón de puntos finos tipo PokerStars
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><circle cx='2' cy='2' r='0.7' fill='rgba(255,255,255,0.05)'/></svg>\")",
+          ].join(", "),
+          backgroundSize: "100% 100%, 24px 24px",
+          boxShadow: "inset 0 0 50px rgba(0,0,0,0.4)",
+        }}
+      />
+
+      {/* Centro: stack de fichas + monto + cartas comunitarias + fase */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
+        <PotChipStack potCop={potCop} />
         <div className="text-center">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-zinc-200/70">
-            Pozo · Mano #{handNumber}
+          <div className="text-[10px] uppercase tracking-[0.3em] text-zinc-100/70">
+            Pot · Mano #{handNumber}
           </div>
-          <div className="font-display text-3xl font-bold tabular-nums text-amber-100 drop-shadow sm:text-4xl">
+          <div className="font-display text-3xl font-bold tabular-nums text-zinc-50 drop-shadow sm:text-4xl">
             {formatCop(potCop)}
           </div>
         </div>
         <div className="scale-75 sm:scale-90">
           <CommunityCards phase={phase} />
         </div>
-        <div className="text-[10px] font-semibold uppercase tracking-[0.4em] text-zinc-200/60">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.4em] text-zinc-100/60">
           {phase}
         </div>
       </div>
 
-      {/* Asientos ocupados — distribuidos en el perímetro */}
+      {/* Asientos ocupados */}
       {occupied.map((seat, i) => {
-        // Offset cíclico desde mi posición (yo voy al bottom = 90°)
-        const orderIdx = i; // index dentro de occupied, ordenado por seatIndex
-        // Re-calculamos para que MI seat esté al bottom; los otros giran
-        // Mi seat: lo encontramos por flag isMe
-        const myIndexInOccupied = occupied.findIndex((s) => s.isMe);
         const offset =
-          (orderIdx - (myIndexInOccupied >= 0 ? myIndexInOccupied : 0) + n) % n;
-        const angleDeg = 90 + (offset / n) * 360; // 90° = bottom
+          (i - (myIndexInOccupied >= 0 ? myIndexInOccupied : 0) + n) % n;
+        const angleDeg = 90 + (offset / n) * 360;
         const angleRad = (angleDeg * Math.PI) / 180;
         const xRatio = 0.46;
         const yRatio = 0.46;
@@ -176,83 +131,142 @@ export function PokerTable({
         const y = 50 + Math.sin(angleRad) * yRatio * 100;
 
         const isOut = seat.status === "FOLDED" || seat.chipsBalance === 0;
+        const inHand =
+          seat.status === "IN" || seat.status === "ALL_IN";
 
         return (
           <div
             key={seat.id}
-            className="absolute flex flex-col items-center gap-1"
+            className="absolute"
             style={{
               left: `${x}%`,
               top: `${y}%`,
-              transform: `translate(-50%, -50%) rotateX(-${TILT}deg)`,
-              transformStyle: "preserve-3d",
+              transform: "translate(-50%, -50%)",
               zIndex: seat.isMyTurn ? 20 : 10,
             }}
           >
-            <div className="relative">
-              <Avatar
-                nickname={seat.nickname}
-                avatarUrl={seat.avatarUrl}
-                size={48}
-                ringColor={
+            <div className="flex flex-col items-center gap-1">
+              {/* Mini cartas back si está en la mano */}
+              {inHand && !isOut && (
+                <div className="flex -space-x-1">
+                  <CardBack />
+                  <CardBack offset />
+                </div>
+              )}
+              <div className="relative">
+                <Avatar
+                  nickname={seat.nickname}
+                  avatarUrl={seat.avatarUrl}
+                  size={48}
+                  ringColor={
+                    seat.isMyTurn
+                      ? "#f59e0b"
+                      : seat.isMe
+                        ? "#10b981"
+                        : undefined
+                  }
+                  disabled={isOut}
+                />
+                {seat.isDealerButton && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-900 ring-2 ring-felt"
+                    title="Botón del dealer"
+                  >
+                    D
+                  </span>
+                )}
+              </div>
+              {/* Tag pill con nombre + stack */}
+              <div
+                className={`flex flex-col items-center rounded-md px-2 py-0.5 text-center backdrop-blur whitespace-nowrap shadow ${
                   seat.isMyTurn
-                    ? "#f59e0b"
-                    : seat.isMe
-                      ? "#10b981"
-                      : undefined
-                }
-                disabled={isOut}
-              />
-              {seat.isDealerButton && (
-                <span
-                  className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-900 ring-2 ring-felt"
-                  title="Botón del dealer"
-                >
-                  D
-                </span>
+                    ? "bg-amber-600/90 text-zinc-950 ring-1 ring-amber-400"
+                    : "bg-black/75 text-zinc-100 ring-1 ring-white/10"
+                }`}
+              >
+                <div className="text-[11px] font-semibold leading-tight">
+                  {seat.isMe ? "Tú" : seat.nickname}
+                </div>
+                <div className="text-[10px] tabular-nums leading-tight opacity-90">
+                  {formatCop(seat.chipsBalance)}
+                </div>
+              </div>
+              {seat.currentBet > 0 && (
+                <div className="rounded-full bg-amber-900/80 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-amber-100 ring-1 ring-amber-500/40">
+                  {formatCop(seat.currentBet)}
+                </div>
+              )}
+              {seat.status === "FOLDED" && (
+                <div className="rounded bg-red-950/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-red-300">
+                  fold
+                </div>
+              )}
+              {seat.status === "ALL_IN" && (
+                <div className="rounded bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-amber-200">
+                  all-in
+                </div>
               )}
             </div>
-            <div
-              className={`rounded px-1.5 py-0.5 text-[10px] backdrop-blur whitespace-nowrap ${
-                seat.isMyTurn
-                  ? "bg-amber-600/80 font-semibold text-zinc-950"
-                  : "bg-black/70 text-zinc-100"
-              }`}
-            >
-              {seat.isMe ? "Tú" : seat.nickname}
-            </div>
-            <div className="text-[10px] tabular-nums text-zinc-200/90">
-              {formatCop(seat.chipsBalance)}
-            </div>
-            {seat.currentBet > 0 && (
-              <div className="rounded-full bg-amber-900/70 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-amber-100 ring-1 ring-amber-500/40">
-                {formatCop(seat.currentBet)}
-              </div>
-            )}
-            {seat.status === "FOLDED" && (
-              <div className="rounded bg-red-950/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-red-300">
-                fold
-              </div>
-            )}
-            {seat.status === "ALL_IN" && (
-              <div className="rounded bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-amber-200">
-                all-in
-              </div>
-            )}
           </div>
         );
       })}
 
-      {/* Marcador de "void" para el espacio cuando totalSeats > occupied */}
       {n < totalSeats && (
-        <div
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-widest text-zinc-300/50"
-          style={{ transform: `translate(-50%, 0) rotateX(-${TILT}deg)` }}
-        >
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-widest text-zinc-200/50">
           {n}/{totalSeats}
         </div>
       )}
-      </div>
+    </div>
+  );
+}
+
+// Reverso de carta — pequeño rectángulo con dorso de fieltro
+function CardBack({ offset = false }: { offset?: boolean }) {
+  return (
+    <div
+      className="h-7 w-5 rounded-sm border border-white/30 shadow-sm"
+      style={{
+        background:
+          "linear-gradient(135deg, #0a4d2c 0%, #084d2c 50%, #063b21 100%)",
+        transform: offset ? "rotate(8deg)" : "rotate(-4deg)",
+      }}
+      aria-hidden="true"
+    >
+      <div className="absolute inset-0.5 rounded-[1px] border border-white/15" />
+    </div>
+  );
+}
+
+// Stack visual de fichas representando el pozo
+function PotChipStack({ potCop }: { potCop: number }) {
+  if (potCop <= 0) return null;
+  // 4 colores de chips representativos
+  const stack: { bg: string; ring: string }[] = [
+    { bg: "#f5f5f5", ring: "#a3a3a3" },
+    { bg: "#d33232", ring: "#7f1d1d" },
+    { bg: "#2d6cdf", ring: "#1e3a8a" },
+    { bg: "#1a1a1a", ring: "#525252" },
+  ];
+  return (
+    <div className="flex items-end gap-1">
+      {stack.map((c, i) => (
+        <div key={i} className="flex flex-col items-center">
+          {/* Pequeño stack vertical de 3 chips */}
+          {Array.from({ length: 3 }).map((_, j) => (
+            <div
+              key={j}
+              className="rounded-full border-2 shadow"
+              style={{
+                width: 18,
+                height: 4,
+                background: c.bg,
+                borderColor: c.ring,
+                marginTop: j === 0 ? 0 : -2,
+              }}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
