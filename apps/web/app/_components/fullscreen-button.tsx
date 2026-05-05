@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 export function FullscreenButton() {
   const [isFs, setIsFs] = useState(false);
   const [supported, setSupported] = useState(true);
-  const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -18,16 +17,15 @@ export function FullscreenButton() {
       return;
     }
 
-    // Solo en dispositivos touch
-    const isTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-    setShow(isTouch);
-
     const onChange = () => setIsFs(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onChange);
     onChange();
 
-    // Auto-fullscreen al rotar a landscape (en mobile)
+    // Auto-fullscreen al rotar a landscape (mobile)
     const mq = window.matchMedia("(orientation: landscape)");
+    const isTouch = window.matchMedia(
+      "(hover: none) and (pointer: coarse)",
+    ).matches;
     const tryEnter = async () => {
       if (!isTouch) return;
       if (!mq.matches) return;
@@ -35,8 +33,7 @@ export function FullscreenButton() {
       try {
         await document.documentElement.requestFullscreen();
       } catch {
-        // Browser bloqueó por falta de gesture — el usuario tendrá que
-        // tocar el botón. Silencioso.
+        // Browser bloqueó por falta de gesture — silencioso
       }
     };
     mq.addEventListener("change", tryEnter);
@@ -47,7 +44,7 @@ export function FullscreenButton() {
     };
   }, []);
 
-  if (!supported || !show) return null;
+  if (!supported) return null;
 
   async function toggle() {
     try {
