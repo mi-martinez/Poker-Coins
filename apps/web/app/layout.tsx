@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Federo, Roboto } from "next/font/google";
 import "./globals.css";
-import { OrientationGuard } from "./orientation-guard";
 import { FullscreenButton } from "./_components/fullscreen-button";
 
 // Federo — display elegante con un toque clásico para títulos.
@@ -41,7 +40,6 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${federo.variable} ${roboto.variable}`}>
       <body className="font-sans">
-        <OrientationGuard />
         <FullscreenButton />
         {children}
       </body>
