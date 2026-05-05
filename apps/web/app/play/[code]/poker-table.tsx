@@ -128,8 +128,10 @@ export function PokerTable({
           (i - (myIndexInOccupied >= 0 ? myIndexInOccupied : 0) + n) % n;
         const angleDeg = 90 + (offset / n) * 360;
         const angleRad = (angleDeg * Math.PI) / 180;
-        const xRatio = 0.46;
-        const yRatio = 0.46;
+        // Margen amplio: el avatar nunca llega al borde del óvalo. La
+        // columna avatar+tag+bet cabe completa dentro del fieltro.
+        const xRatio = 0.4;
+        const yRatio = 0.22;
         const x = 50 + Math.cos(angleRad) * xRatio * 100;
         const y = 50 + Math.sin(angleRad) * yRatio * 100;
 
@@ -148,7 +150,7 @@ export function PokerTable({
               zIndex: seat.isMyTurn ? 20 : 10,
             }}
           >
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-0.5">
               {/* Mini cartas back si está en la mano */}
               {inHand && !isOut && (
                 <div className="flex -space-x-1">
