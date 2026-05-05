@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Federo, Roboto } from "next/font/google";
 import "./globals.css";
 import { FullscreenButton } from "./_components/fullscreen-button";
+import { UserMenu } from "./_components/user-menu";
+import { getCurrentUser } from "@/lib/auth-server";
 
 // Federo — display elegante con un toque clásico para títulos.
 const federo = Federo({
@@ -32,14 +34,24 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await getCurrentUser();
+  const userForMenu = user
+    ? {
+        id: user.id,
+        nickname: user.nickname,
+        avatarUrl: user.avatarUrl,
+      }
+    : null;
+
   return (
     <html lang="es" className={`${federo.variable} ${roboto.variable}`}>
       <body className="font-sans">
+        <UserMenu user={userForMenu} />
         <FullscreenButton />
         {children}
       </body>

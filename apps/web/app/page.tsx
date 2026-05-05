@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth-server";
-import { SignOutButton } from "./_components/sign-out-button";
 import { AnimateIn } from "./_components/animate";
 
 export default async function HomePage() {
@@ -38,9 +37,6 @@ export default async function HomePage() {
             >
               Soy dealer
             </Link>
-          </AnimateIn>
-          <AnimateIn preset="fadeUp" delay={0.5}>
-            <SignOutButton />
           </AnimateIn>
         </>
       ) : (
