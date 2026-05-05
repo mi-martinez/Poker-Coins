@@ -4,40 +4,38 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   getRedirectResult,
+  onAuthStateChanged,
   signInWithRedirect,
+  type User,
 } from "firebase/auth";
 import { getFirebaseAuth, getGoogleProvider } from "@/lib/firebase-client";
 
 const NEXT_KEY = "pc:redirect-next";
 
-// Sign-in con Google vía redirect (no popup). Funciona en móviles
-// y bypassea bloqueadores de popups. Flujo:
-//   1. Click → guarda `next` en sessionStorage → redirige a Google
-//   2. Google autentica → redirige a pokercoins-7828c.firebaseapp.com
-//   3. Esa página procesa y vuelve a nuestro dominio
-//   4. Aquí useEffect detecta el resultado y crea la session cookie
+// Sign-in con Google vía redirect. Para que funcione confiablemente en
+// Safari iOS / navegadores con ITP, combinamos dos estrategias:
+//   1. getRedirectResult → resuelve cuando volvemos del redirect
+//   2. onAuthStateChanged → respaldo si #1 falla pero el SDK sí
+//      restauró el auth state desde storage
+// Cualquiera que dispare primero crea la session cookie.
 export function GoogleSignInButton() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/";
-  const [loading, setLoading] = useState(true); // empieza loading mientras chequea redirect
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const handled = useRef(false);
+  const processed = useRef(false);
 
   useEffect(() => {
-    if (handled.current) return;
-    handled.current = true;
-
     const auth = getFirebaseAuth();
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!result) {
-          // No venimos de un redirect — listo para que el usuario clickee
-          setLoading(false);
-          return;
-        }
-        // Volvimos del redirect con un usuario autenticado
-        const idToken = await result.user.getIdToken(true);
+    let unsub: (() => void) | null = null;
+
+    async function processUser(user: User) {
+      if (processed.current) return;
+      processed.current = true;
+      if (unsub) unsub();
+      try {
+        const idToken = await user.getIdToken(true);
         const res = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -47,26 +45,64 @@ export function GoogleSignInButton() {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? `HTTP ${res.status}`);
         }
-        const savedNext = sessionStorage.getItem(NEXT_KEY) || "/";
+        const savedNext = sessionStorage.getItem(NEXT_KEY) || next;
         sessionStorage.removeItem(NEXT_KEY);
         router.replace(savedNext);
         router.refresh();
-      })
-      .catch((e) => {
+      } catch (e) {
         setError((e as Error).message);
         setLoading(false);
+        processed.current = false;
+      }
+    }
+
+    // Estrategia 1: si venimos de un redirect, getRedirectResult lo dirá
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          void processUser(result.user);
+        }
+      })
+      .catch((e) => {
+        // No fallar duro — la estrategia 2 puede rescatar
+        console.warn("getRedirectResult:", (e as Error).message);
       });
-  }, [router]);
+
+    // Estrategia 2: escucha auth state. Si el SDK restauró el usuario
+    // desde storage tras el redirect, lo cazamos acá.
+    unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        void processUser(user);
+      } else {
+        // Sin usuario y NO estábamos esperando redirect → listo para click
+        if (sessionStorage.getItem(NEXT_KEY) === null) {
+          setLoading(false);
+        }
+      }
+    });
+
+    // Timeout: si 8s pasan sin que ninguna estrategia produzca usuario,
+    // limpia el flag de redirect y deja el botón visible para reintentar.
+    const timeout = setTimeout(() => {
+      if (!processed.current) {
+        sessionStorage.removeItem(NEXT_KEY);
+        setLoading(false);
+      }
+    }, 8000);
+
+    return () => {
+      if (unsub) unsub();
+      clearTimeout(timeout);
+    };
+  }, [router, next]);
 
   async function handleClick() {
     setError(null);
     setLoading(true);
     try {
-      // Guardamos a dónde queremos volver tras el redirect
       sessionStorage.setItem(NEXT_KEY, next);
       const auth = getFirebaseAuth();
       await signInWithRedirect(auth, getGoogleProvider());
-      // El navegador ya está navegando a Google — no hay nada más que hacer
     } catch (e) {
       setError((e as Error).message);
       setLoading(false);
