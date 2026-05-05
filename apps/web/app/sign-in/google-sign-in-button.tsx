@@ -4,99 +4,95 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   getRedirectResult,
-  onAuthStateChanged,
+  signInWithPopup,
   signInWithRedirect,
   type User,
+  type UserCredential,
 } from "firebase/auth";
 import { getFirebaseAuth, getGoogleProvider } from "@/lib/firebase-client";
 
 const NEXT_KEY = "pc:redirect-next";
 
-// Sign-in con Google vía redirect. Para que funcione confiablemente en
-// Safari iOS / navegadores con ITP, combinamos dos estrategias:
-//   1. getRedirectResult → resuelve cuando volvemos del redirect
-//   2. onAuthStateChanged → respaldo si #1 falla pero el SDK sí
-//      restauró el auth state desde storage
-// Cualquiera que dispare primero crea la session cookie.
+// Sign-in con Google. Estrategia:
+//  1. Click → intentamos popup (más rápido, sin recargar la página)
+//  2. Si el browser bloquea el popup → mostramos botón "Continuar igualmente"
+//     que dispara signInWithRedirect (full-page, no se puede bloquear)
+//  3. Al volver de un redirect → getRedirectResult procesa el resultado
 export function GoogleSignInButton() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const processed = useRef(false);
+  const [popupBlocked, setPopupBlocked] = useState(false);
+  const handled = useRef(false);
 
+  // Manejar resultado de redirect (si venimos de uno)
   useEffect(() => {
+    if (handled.current) return;
+    handled.current = true;
     const auth = getFirebaseAuth();
-    let unsub: (() => void) | null = null;
-
-    async function processUser(user: User) {
-      if (processed.current) return;
-      processed.current = true;
-      if (unsub) unsub();
-      try {
-        const idToken = await user.getIdToken(true);
-        const res = await fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken }),
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? `HTTP ${res.status}`);
-        }
-        const savedNext = sessionStorage.getItem(NEXT_KEY) || next;
-        sessionStorage.removeItem(NEXT_KEY);
-        router.replace(savedNext);
-        router.refresh();
-      } catch (e) {
-        setError((e as Error).message);
-        setLoading(false);
-        processed.current = false;
-      }
-    }
-
-    // Estrategia 1: si venimos de un redirect, getRedirectResult lo dirá
     getRedirectResult(auth)
-      .then((result) => {
+      .then(async (result) => {
         if (result?.user) {
-          void processUser(result.user);
+          await finishSignIn(result.user);
+        } else {
+          setLoading(false);
         }
       })
       .catch((e) => {
-        // No fallar duro — la estrategia 2 puede rescatar
-        console.warn("getRedirectResult:", (e as Error).message);
+        setError((e as Error).message);
+        setLoading(false);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // Estrategia 2: escucha auth state. Si el SDK restauró el usuario
-    // desde storage tras el redirect, lo cazamos acá.
-    unsub = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        void processUser(user);
-      } else {
-        // Sin usuario y NO estábamos esperando redirect → listo para click
-        if (sessionStorage.getItem(NEXT_KEY) === null) {
-          setLoading(false);
-        }
-      }
+  async function finishSignIn(user: User) {
+    const idToken = await user.getIdToken(true);
+    const res = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? `HTTP ${res.status}`);
+    }
+    const savedNext = sessionStorage.getItem(NEXT_KEY) || next;
+    sessionStorage.removeItem(NEXT_KEY);
+    router.replace(savedNext);
+    router.refresh();
+  }
 
-    // Timeout: si 8s pasan sin que ninguna estrategia produzca usuario,
-    // limpia el flag de redirect y deja el botón visible para reintentar.
-    const timeout = setTimeout(() => {
-      if (!processed.current) {
-        sessionStorage.removeItem(NEXT_KEY);
+  async function handleClickPopup() {
+    setError(null);
+    setLoading(true);
+    setPopupBlocked(false);
+    try {
+      const auth = getFirebaseAuth();
+      const result: UserCredential = await signInWithPopup(
+        auth,
+        getGoogleProvider(),
+      );
+      await finishSignIn(result.user);
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/cancelled-popup-request"
+      ) {
+        setPopupBlocked(true);
+        setLoading(false);
+      } else if (code === "auth/popup-closed-by-user") {
+        setLoading(false);
+      } else {
+        setError((e as Error).message);
         setLoading(false);
       }
-    }, 8000);
+    }
+  }
 
-    return () => {
-      if (unsub) unsub();
-      clearTimeout(timeout);
-    };
-  }, [router, next]);
-
-  async function handleClick() {
+  async function handleClickRedirect() {
     setError(null);
     setLoading(true);
     try {
@@ -113,13 +109,28 @@ export function GoogleSignInButton() {
     <div className="flex flex-col items-center gap-3">
       <button
         type="button"
-        onClick={handleClick}
+        onClick={handleClickPopup}
         disabled={loading}
         className="flex items-center gap-3 rounded-lg border border-zinc-700 bg-white px-5 py-3 font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-100 disabled:opacity-60"
       >
         <GoogleLogo />
         {loading ? "Conectando..." : "Continuar con Google"}
       </button>
+      {popupBlocked && (
+        <div className="flex max-w-xs flex-col items-center gap-2 rounded-md border border-amber-700/40 bg-amber-950/30 px-3 py-2 text-center text-xs">
+          <p className="text-amber-200">
+            Tu navegador bloqueó la ventana emergente.
+          </p>
+          <button
+            type="button"
+            onClick={handleClickRedirect}
+            disabled={loading}
+            className="rounded-md bg-amber-600 px-3 py-1.5 font-semibold text-zinc-950 hover:bg-amber-500"
+          >
+            Continuar en esta página
+          </button>
+        </div>
+      )}
       {error && (
         <p className="max-w-xs text-center text-sm text-red-400" role="alert">
           {error}
