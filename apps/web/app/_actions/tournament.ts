@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth-server";
 
@@ -46,7 +45,4 @@ export async function startTournamentAction(formData: FormData) {
   }
 
   await admin.from("rooms").update({ status: "ACTIVE" }).eq("id", room.id);
-
-  revalidatePath(`/dealer/${room.code}`);
-  revalidatePath(`/play/${room.code}`);
 }

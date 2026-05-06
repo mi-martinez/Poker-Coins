@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth-server";
 
@@ -96,7 +95,5 @@ export async function advancePhaseAction(
     .update({ current_bet_cop: 0 })
     .eq("hand_id", hand.id);
 
-  revalidatePath(`/dealer/${roomCode}`);
-  revalidatePath(`/play/${roomCode}`);
   return {};
 }

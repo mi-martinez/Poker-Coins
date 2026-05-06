@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth-server";
 
@@ -54,8 +53,6 @@ export async function requestChipsAction(
   });
   if (error) return { error: `No se pudo solicitar: ${error.message}` };
 
-  revalidatePath(`/play/${roomCode}`);
-  revalidatePath(`/dealer/${roomCode}`);
   return { ok: true };
 }
 
@@ -108,9 +105,6 @@ export async function approveChipRequestAction(formData: FormData) {
       reason: "CHIP_REQUEST_APPROVED",
     }),
   ]);
-
-  revalidatePath(`/dealer/${room.code}`);
-  revalidatePath(`/play/${room.code}`);
 }
 
 export async function rejectChipRequestAction(formData: FormData) {
@@ -141,7 +135,4 @@ export async function rejectChipRequestAction(formData: FormData) {
     .from("chip_requests")
     .update({ status: "REJECTED", resolved_at: new Date().toISOString() })
     .eq("id", req.id);
-
-  revalidatePath(`/dealer/${room.code}`);
-  revalidatePath(`/play/${room.code}`);
 }

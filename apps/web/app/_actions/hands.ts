@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth-server";
 
@@ -190,7 +189,5 @@ export async function startHandAction(
     },
   ]);
 
-  revalidatePath(`/dealer/${roomCode}`);
-  revalidatePath(`/play/${roomCode}`);
   return {};
 }
