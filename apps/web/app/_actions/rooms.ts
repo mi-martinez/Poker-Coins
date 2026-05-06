@@ -269,7 +269,5 @@ export async function closeRoomAction(formData: FormData) {
     .update({ status: "CLOSED" })
     .eq("id", room.id);
 
-  revalidatePath(`/dealer/${roomCode}`);
-  revalidatePath(`/play/${roomCode}`);
   revalidatePath(`/dealer`);
 }

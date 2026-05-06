@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Federo, Roboto } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { FullscreenButton } from "./_components/fullscreen-button";
 import { UserMenu } from "./_components/user-menu";
@@ -34,27 +35,38 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
-  const userForMenu = user
-    ? {
-        id: user.id,
-        nickname: user.nickname,
-        avatarUrl: user.avatarUrl,
-      }
-    : null;
-
   return (
     <html lang="es" className={`${federo.variable} ${roboto.variable}`}>
       <body className="font-sans">
-        <UserMenu user={userForMenu} />
+        <Suspense fallback={null}>
+          <UserMenuSlot />
+        </Suspense>
         <FullscreenButton />
         {children}
       </body>
     </html>
+  );
+}
+
+// El UserMenu necesita auth, pero NO debe bloquear el render del árbol
+// principal. Suspense permite que `children` arranque a renderizar
+// mientras esto resuelve. `getCurrentUser` está envuelto en React
+// `cache`, así que la página interior reusa el mismo resultado.
+async function UserMenuSlot() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return (
+    <UserMenu
+      user={{
+        id: user.id,
+        nickname: user.nickname,
+        avatarUrl: user.avatarUrl,
+      }}
+    />
   );
 }

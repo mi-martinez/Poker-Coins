@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth-server";
 
@@ -146,8 +145,6 @@ export async function dealerForceFoldAction(formData: FormData) {
           .eq("id", hand.id),
       ]);
     }
-    revalidatePath(`/dealer/${roomCode}`);
-    revalidatePath(`/play/${roomCode}`);
     return;
   }
 
@@ -186,9 +183,6 @@ export async function dealerForceFoldAction(formData: FormData) {
       turn_started_at: nextTurn ? new Date().toISOString() : null,
     })
     .eq("id", hand.id);
-
-  revalidatePath(`/dealer/${roomCode}`);
-  revalidatePath(`/play/${roomCode}`);
 }
 
 // ─── Dealer marca un asiento para que NO juegue la próxima mano ──────
@@ -221,7 +215,4 @@ export async function toggleSitOutAction(formData: FormData) {
     .from("seats")
     .update({ status: newStatus })
     .eq("id", seatId);
-
-  revalidatePath(`/dealer/${roomCode}`);
-  revalidatePath(`/play/${roomCode}`);
 }
