@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getRealtimeClient } from "@/lib/supabase-realtime";
@@ -22,31 +22,36 @@ const REFRESH_DEBOUNCE_MS = 60;
 //   apaga al reconectar.
 export function RealtimeRefresher({ roomId }: { roomId: string }) {
   const router = useRouter();
-  const fallbackId = useRef<ReturnType<typeof setInterval> | null>(null);
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wasDisconnected = useRef(false);
 
   useEffect(() => {
     const supabase = getRealtimeClient();
+    let fallbackId: ReturnType<typeof setInterval> | null = null;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let wasDisconnected = false;
+    // Una vez que arrancamos el cleanup, ignoramos callbacks tardíos
+    // de subscribe(): removeChannel hace transitionar el canal a
+    // CLOSED y dispararía startFallback() de nuevo dejando un interval
+    // huérfano sin owner.
+    let teardown = false;
 
     const scheduleRefresh = () => {
-      if (refreshTimer.current) return;
-      refreshTimer.current = setTimeout(() => {
-        refreshTimer.current = null;
+      if (teardown || refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
         router.refresh();
       }, REFRESH_DEBOUNCE_MS);
     };
 
     const startFallback = () => {
-      if (fallbackId.current) return;
-      fallbackId.current = setInterval(() => {
+      if (teardown || fallbackId) return;
+      fallbackId = setInterval(() => {
         router.refresh();
       }, FALLBACK_POLL_MS);
     };
     const stopFallback = () => {
-      if (fallbackId.current) {
-        clearInterval(fallbackId.current);
-        fallbackId.current = null;
+      if (fallbackId) {
+        clearInterval(fallbackId);
+        fallbackId = null;
       }
     };
 
@@ -58,12 +63,13 @@ export function RealtimeRefresher({ roomId }: { roomId: string }) {
         scheduleRefresh();
       })
       .subscribe((status) => {
+        if (teardown) return;
         if (status === "SUBSCRIBED") {
           stopFallback();
           // Si veníamos de una desconexión, refrescamos una vez para
           // recuperar eventos que pudimos perder durante la caída.
-          if (wasDisconnected.current) {
-            wasDisconnected.current = false;
+          if (wasDisconnected) {
+            wasDisconnected = false;
             scheduleRefresh();
           }
         } else if (
@@ -71,16 +77,17 @@ export function RealtimeRefresher({ roomId }: { roomId: string }) {
           status === "TIMED_OUT" ||
           status === "CLOSED"
         ) {
-          wasDisconnected.current = true;
+          wasDisconnected = true;
           startFallback();
         }
       });
 
     return () => {
+      teardown = true;
       stopFallback();
-      if (refreshTimer.current) {
-        clearTimeout(refreshTimer.current);
-        refreshTimer.current = null;
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+        refreshTimer = null;
       }
       supabase.removeChannel(channel);
     };
