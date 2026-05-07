@@ -17,7 +17,7 @@ export function JoinRoomForm({ defaultCode }: { defaultCode?: string }) {
   return (
     <form action={formAction} className="flex w-full max-w-sm flex-col gap-3">
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-zinc-400">Código de posición</span>
+        <span className="text-zinc-400">Código de sala o de posición</span>
         <input
           name="seat_code"
           required
@@ -28,7 +28,8 @@ export function JoinRoomForm({ defaultCode }: { defaultCode?: string }) {
           className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 uppercase tracking-widest"
         />
         <span className="text-xs text-zinc-500">
-          Pídeselo al dealer — cada jugador tiene un código distinto que define su asiento.
+          En salas virtuales basta el código de la sala. En presenciales,
+          el dealer reparte un código de posición por jugador.
         </span>
       </label>
       {state.error && (

@@ -195,18 +195,35 @@ export async function joinSeatAction(
   }
 
   if (!isValidRoomCode(seatCode)) {
-    return { error: "Código de posición inválido (6 caracteres)." };
+    return { error: "Código inválido (6 caracteres)." };
   }
 
   const admin = createAdminClient();
 
-  const { data: seat, error: seatErr } = await admin
+  const { data: seat } = await admin
     .from("seats")
     .select("id, room_id, user_id, status")
     .eq("seat_code", seatCode)
     .maybeSingle();
 
-  if (seatErr || !seat) return { error: "Posición no encontrada." };
+  // Fallback: si no es seat_code, ¿es un room_code? En VIRTUAL no se
+  // entrega seat_code — el jugador entra con el código de la sala y
+  // el auto-seat lo coloca en el primer asiento libre.
+  if (!seat) {
+    const { data: roomByCode } = await admin
+      .from("rooms")
+      .select("code, dealer_user_id, status")
+      .eq("code", seatCode)
+      .maybeSingle();
+    if (!roomByCode) return { error: "Código no encontrado." };
+    if (roomByCode.status === "CLOSED") {
+      return { error: "Esta sala ya está cerrada." };
+    }
+    if (roomByCode.dealer_user_id === user.id) {
+      redirect(`/dealer/${roomByCode.code}` as never);
+    }
+    redirect(`/play/${roomByCode.code}` as never);
+  }
 
   // Si ya está ocupada por otro usuario, rechazar
   if (seat.user_id && seat.user_id !== user.id) {
