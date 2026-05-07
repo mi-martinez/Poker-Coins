@@ -266,6 +266,7 @@ export default async function DealerRoomPage({
           phase={activeHand.phase}
           phaseReadyAt={activeHand.phase_ready_at ?? null}
           isDealer
+          cardMode={room.card_mode}
         />
       )}
       <WinCelebration winners={winners} />

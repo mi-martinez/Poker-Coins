@@ -283,6 +283,7 @@ export default async function PlayRoomPage({
           phase={activeHand.phase}
           phaseReadyAt={activeHand.phase_ready_at ?? null}
           isDealer={false}
+          cardMode={room.card_mode}
           myHoleCards={
             room.card_mode === "VIRTUAL" &&
             Array.isArray(myParticipant?.hole_cards)
