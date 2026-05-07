@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth-server";
+import { isBettingClosed, nextActorSeatId } from "@/lib/turn-logic";
 
 type ActionType = "FOLD" | "CHECK" | "CALL" | "RAISE" | "ALL_IN";
 
@@ -22,31 +23,6 @@ interface ParticipantLite {
   status: "IN" | "FOLDED" | "ALL_IN";
   current_bet_cop: number;
   total_bet_cop: number;
-}
-
-// Devuelve siguiente seat con participación activa (status = IN), en
-// orden cíclico desde el dealer button. Si quedan ≤1 IN, no hay
-// próximo turno posible — la ronda cerró (los ALL_IN no pueden actuar).
-function nextTurnSeatId(
-  seats: SeatLite[],
-  participants: ParticipantLite[],
-  fromSeatId: string,
-  dealerSeatIdx: number,
-): string | null {
-  const inSeats = seats.filter((s) => {
-    const p = participants.find((pp) => pp.seat_id === s.id);
-    return p && p.status === "IN";
-  });
-  if (inSeats.length <= 1) return null;
-  const ordered = [...inSeats].sort((a, b) => {
-    const aDist = (a.seat_index - dealerSeatIdx + 1000) % 1000;
-    const bDist = (b.seat_index - dealerSeatIdx + 1000) % 1000;
-    return aDist - bDist;
-  });
-  const idx = ordered.findIndex((s) => s.id === fromSeatId);
-  if (idx === -1) return ordered[0]!.id;
-  const next = ordered[(idx + 1) % ordered.length];
-  return next ? next.id : null;
 }
 
 export async function playerAction(
@@ -221,45 +197,35 @@ export async function playerAction(
   const liveList = updatedParticipants.filter(
     (p) => p.status === "IN" || p.status === "ALL_IN",
   );
-  const inOnlyList = updatedParticipants.filter((p) => p.status === "IN");
 
   let nextTurn: string | null = null;
 
   if (liveList.length > 1) {
-    if (inOnlyList.length <= 1) {
-      // Quedan ≥2 vivos pero ≤1 puede apostar → no hay más betting
-      // posible. La ronda cierra. El dealer fast-forwarea las fases
-      // hasta showdown y declara ganador(es) por pozo(s).
+    // Acciones VOLUNTARIAS de esta fase. SB y BB son acciones forzadas
+    // (al inicio de la mano) y NO cuentan como turno de su jugador —
+    // así el BB conserva la "option" preflop de raisear si nadie lo
+    // hizo antes.
+    const { data: phaseActions } = await admin
+      .from("actions")
+      .select("seat_id, type")
+      .eq("hand_id", hand.id)
+      .eq("phase", hand.phase);
+    const seatsActed = new Set(
+      (phaseActions ?? [])
+        .filter((a) => a.type !== "SMALL_BLIND" && a.type !== "BIG_BLIND")
+        .map((a) => a.seat_id),
+    );
+    seatsActed.add(mySeat.id);
+
+    if (isBettingClosed(updatedParticipants, seatsActed)) {
       nextTurn = null;
     } else {
-      const maxBet = Math.max(...inOnlyList.map((p) => p.current_bet_cop));
-      const allMatch = inOnlyList.every(
-        (p) => p.current_bet_cop === maxBet,
+      nextTurn = nextActorSeatId(
+        seats,
+        updatedParticipants,
+        mySeat.id,
+        hand.dealer_seat_index,
       );
-
-      // ¿Todos los IN ya actuaron en esta fase?
-      const { data: phaseActions } = await admin
-        .from("actions")
-        .select("seat_id")
-        .eq("hand_id", hand.id)
-        .eq("phase", hand.phase);
-      const seatsActed = new Set(
-        (phaseActions ?? []).map((a) => a.seat_id),
-      );
-      const allActedThisPhase = inOnlyList.every((p) =>
-        seatsActed.has(p.seat_id),
-      );
-
-      if (allMatch && allActedThisPhase) {
-        nextTurn = null;
-      } else {
-        nextTurn = nextTurnSeatId(
-          seats,
-          updatedParticipants,
-          mySeat.id,
-          hand.dealer_seat_index,
-        );
-      }
     }
   }
 

@@ -38,12 +38,44 @@ interface Props {
   potCop: number;
   phase: Phase;
   handNumber: number;
+  /** Modo VIRTUAL: códigos de las cartas comunitarias (deckofcardsapi). */
+  communityCards?: string[] | null;
+  /** Tinte de la mesa según situación del jugador local. */
+  mood?: "normal" | "waiting" | "out";
 }
 
 // Mesa 2D estilo cenital (referencia: PokerStars). Plana, sin
 // perspective ni rotateX. Avatares con tag pill alrededor del óvalo.
 // Cartas back pequeñas junto a cada jugador IN. Pot al centro con
 // stack de fichas + monto.
+// Paletas de fieltro por mood. La rim/felt usan estas mismas tonadas.
+const FELT_PALETTE: Record<
+  NonNullable<Props["mood"]>,
+  { rimTop: string; rimBot: string; feltA: string; feltB: string; feltC: string }
+> = {
+  normal: {
+    rimTop: "#1a3d2a",
+    rimBot: "#0d2618",
+    feltA: "rgba(46,179,87,0.6)",
+    feltB: "rgba(31,138,63,1)",
+    feltC: "rgba(13,107,63,1)",
+  },
+  waiting: {
+    rimTop: "#1a2d52",
+    rimBot: "#0d1830",
+    feltA: "rgba(60,110,200,0.55)",
+    feltB: "rgba(35,75,160,1)",
+    feltC: "rgba(20,50,110,1)",
+  },
+  out: {
+    rimTop: "#222222",
+    rimBot: "#0d0d0d",
+    feltA: "rgba(60,60,60,0.5)",
+    feltB: "rgba(40,40,40,1)",
+    feltC: "rgba(20,20,20,1)",
+  },
+};
+
 export function PokerTable({
   seats,
   mySeatIndex,
@@ -51,11 +83,14 @@ export function PokerTable({
   potCop,
   phase,
   handNumber,
+  communityCards,
+  mood = "normal",
 }: Props) {
   void mySeatIndex;
   const occupied = seats.filter((s) => s.userId);
   const n = occupied.length;
   const myIndexInOccupied = occupied.findIndex((s) => s.isMe);
+  const palette = FELT_PALETTE[mood];
 
   return (
     <div
@@ -74,11 +109,10 @@ export function PokerTable({
 
       {/* Rim exterior — borde simple oscuro */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 transition-[background] duration-500 ease-out"
         style={{
           borderRadius: "40%",
-          background:
-            "linear-gradient(180deg, #1a3d2a 0%, #0d2618 100%)",
+          background: `linear-gradient(180deg, ${palette.rimTop} 0%, ${palette.rimBot} 100%)`,
           boxShadow: [
             "0 10px 30px rgba(0,0,0,0.45)",
             "inset 0 -3px 8px rgba(0,0,0,0.5)",
@@ -90,11 +124,11 @@ export function PokerTable({
 
       {/* Fieltro con pattern de puntitos sutiles */}
       <div
-        className="absolute inset-3"
+        className="absolute inset-3 transition-[background] duration-500 ease-out"
         style={{
           borderRadius: "38%",
           background: [
-            "radial-gradient(ellipse at center, rgba(46,179,87,0.6) 0%, rgba(31,138,63,1) 50%, rgba(13,107,63,1) 100%)",
+            `radial-gradient(ellipse at center, ${palette.feltA} 0%, ${palette.feltB} 50%, ${palette.feltC} 100%)`,
             // patrón de puntos finos tipo PokerStars
             "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><circle cx='2' cy='2' r='0.7' fill='rgba(255,255,255,0.05)'/></svg>\")",
           ].join(", "),
@@ -110,7 +144,7 @@ export function PokerTable({
           {formatCop(potCop)}
         </div>
         <div className="scale-[0.55] sm:scale-[0.65]">
-          <CommunityCards phase={phase} />
+          <CommunityCards phase={phase} cards={communityCards ?? null} />
         </div>
         <div className="text-[8px] font-semibold uppercase tracking-[0.3em] text-zinc-100/60">
           #{handNumber} · {phase}

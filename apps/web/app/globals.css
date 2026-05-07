@@ -10,6 +10,25 @@
   --felt-rim: #5a3c1f;
 }
 
+/* Tres estados de "mood" del fieltro según situación del jugador:
+   - default (verde): su turno o jugando activamente
+   - waiting (azul): NO es su turno pero sigue IN — la atención va
+     a los eventos de la mesa
+   - out (oscuro): foldeó / no participa en la mano — modo espectador */
+body.felt-waiting {
+  --felt-base: #0a2f4d;
+  --felt-deep: #06213b;
+  --felt-rim: #1f3a5a;
+}
+body.felt-out {
+  --felt-base: #1a1a1a;
+  --felt-deep: #0a0a0a;
+  --felt-rim: #2a2a2a;
+}
+body {
+  transition: background-color 0.4s ease;
+}
+
 html,
 body {
   height: 100%;

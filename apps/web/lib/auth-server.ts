@@ -12,9 +12,11 @@ export interface CurrentUser {
   avatarUrl: string | null;
 }
 
-// React `cache` deduplica por request: aunque se llame N veces (layout +
-// page + server actions), sólo se verifica la cookie y se hace la query
-// a Supabase una sola vez por solicitud.
+// React `cache` deduplica dentro de un mismo render/invocación. En un
+// page render donde layout + page lo llaman, sólo se verifica la cookie
+// y se hace la query a Supabase una vez. Las server actions corren en
+// requests separadas (POST), así que no comparten cache con el render —
+// pero igual se benefician si el action llama a getCurrentUser dos veces.
 export const getCurrentUser = cache(
   async (): Promise<CurrentUser | null> => {
     const cookieStore = await cookies();

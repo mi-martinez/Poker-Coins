@@ -4,14 +4,25 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { advancePhaseAction } from "@/app/_actions/phases";
+import { MyHoleCardsInline } from "./my-hole-cards-inline";
 
 // Duración del countdown según la fase de origen — depende de cuántas
-// cartas físicas tiene que repartir el dealer.
+// cartas físicas tiene que repartir el dealer humano.
 const COUNTDOWN_MS_BY_PHASE: Record<string, number> = {
   PREFLOP: 10_000, // → FLOP: 3 cartas
   FLOP: 5_000, //    → TURN: 1 carta
   TURN: 5_000, //    → RIVER: 1 carta
   RIVER: 3_000, //   → SHOWDOWN: solo transición
+};
+
+// En VIRTUAL no hay dealer humano repartiendo — sólo necesitamos
+// duración para la animación. 3s en todas las fases es suficiente
+// para que el jugador asimile la transición.
+const COUNTDOWN_MS_VIRTUAL: Record<string, number> = {
+  PREFLOP: 3_000,
+  FLOP: 3_000,
+  TURN: 3_000,
+  RIVER: 3_000,
 };
 
 const NEXT_PHASE_LABEL: Record<string, string> = {
@@ -35,14 +46,27 @@ interface Props {
   // Solo el dealer dispara el avance al expirar el countdown — los
   // jugadores ven la animación y esperan el data refresh.
   isDealer: boolean;
+  /** Cartas privadas del jugador en VIRTUAL — siempre a la vista. */
+  myHoleCards?: string[] | null;
+  /** En VIRTUAL las animaciones son más cortas (no hay dealer humano). */
+  cardMode?: "PHYSICAL" | "VIRTUAL";
 }
 
-export function DealOverlay({ roomCode, phase, phaseReadyAt, isDealer }: Props) {
+export function DealOverlay({
+  roomCode,
+  phase,
+  phaseReadyAt,
+  isDealer,
+  myHoleCards,
+  cardMode = "PHYSICAL",
+}: Props) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const fired = useRef(false);
 
-  const countdownMs = COUNTDOWN_MS_BY_PHASE[phase] ?? 10_000;
+  const countdownMap =
+    cardMode === "VIRTUAL" ? COUNTDOWN_MS_VIRTUAL : COUNTDOWN_MS_BY_PHASE;
+  const countdownMs = countdownMap[phase] ?? 10_000;
 
   // Reset cuando cambia phase_ready_at (nueva ronda cerrada)
   useEffect(() => {
@@ -85,6 +109,7 @@ export function DealOverlay({ roomCode, phase, phaseReadyAt, isDealer }: Props) 
       seconds={seconds}
       cardsCount={cardsCount}
       progress={totalProgress}
+      myHoleCards={myHoleCards}
     />
   );
 }
@@ -94,11 +119,13 @@ function Overlay({
   seconds,
   cardsCount,
   progress,
+  myHoleCards,
 }: {
   label: string;
   seconds: number;
   cardsCount: number;
   progress: number;
+  myHoleCards?: string[] | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -183,6 +210,10 @@ function Overlay({
             </div>
           ))}
         </div>
+      )}
+
+      {myHoleCards && myHoleCards.length === 2 && (
+        <MyHoleCardsInline cards={myHoleCards} />
       )}
 
       <div className="relative flex h-36 w-36 items-center justify-center">

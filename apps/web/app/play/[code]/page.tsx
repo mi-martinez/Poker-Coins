@@ -16,6 +16,12 @@ import { WaitingTurnOverlay } from "@/app/_components/waiting-turn-overlay";
 import { WinCelebration } from "@/app/_components/win-celebration";
 import { WinAnnouncement } from "@/app/_components/win-announcement";
 import { GameSounds } from "@/app/_components/game-sounds";
+import { MyHoleCardsInline } from "@/app/_components/my-hole-cards-inline";
+import { BodyClass } from "@/app/_components/body-class";
+import {
+  autoSeatVirtualPlayer,
+  autoStartVirtualHand,
+} from "@/lib/virtual-autoplay";
 
 export default async function PlayRoomPage({
   params,
@@ -38,6 +44,14 @@ export default async function PlayRoomPage({
   if (!room) notFound();
   if (room.dealer_user_id === user.id) {
     redirect(`/dealer/${code}` as never);
+  }
+
+  // En modo VIRTUAL: el sistema sienta automáticamente al jugador en
+  // el primer asiento libre y le entrega fichas iniciales si es CASH.
+  // Idempotente — si ya está sentado no hace nada. Lo hacemos antes
+  // del round-trip para que la página vea el seat ya asignado.
+  if (room.card_mode === "VIRTUAL" && room.status !== "CLOSED") {
+    await autoSeatVirtualPlayer(admin, room, user.id);
   }
 
   // Round-trip 1: todos los datos que solo dependen de room.id en paralelo
@@ -64,7 +78,7 @@ export default async function PlayRoomPage({
     admin
       .from("hands")
       .select(
-        "id, hand_number, dealer_seat_index, phase, pot_cop, current_turn_seat_id, phase_ready_at, turn_started_at",
+        "id, hand_number, dealer_seat_index, phase, pot_cop, current_turn_seat_id, phase_ready_at, turn_started_at, community_cards",
       )
       .eq("room_id", room.id)
       .is("ended_at", null)
@@ -82,6 +96,14 @@ export default async function PlayRoomPage({
   const mySeat = (seats ?? []).find((s) => s.user_id === user.id) ?? null;
   if (!mySeat) {
     redirect("/play");
+  }
+
+  // VIRTUAL auto-start: si no hay mano viva, intenta arrancar una.
+  // Idempotente — si no hay quórum o ya hay mano, retorna sin hacer
+  // nada. La mano recién creada se reflejará en el próximo refresh
+  // que dispara el broadcast realtime.
+  if (room.card_mode === "VIRTUAL" && !activeHand && room.status !== "CLOSED") {
+    await autoStartVirtualHand(admin, room);
   }
 
   // Round-trip 2: users + hand_participants + last action + payouts del último cierre
@@ -109,7 +131,9 @@ export default async function PlayRoomPage({
       activeHand
         ? admin
             .from("hand_participants")
-            .select("id, seat_id, status, current_bet_cop, total_bet_cop")
+            .select(
+              "id, seat_id, status, current_bet_cop, total_bet_cop, hole_cards",
+            )
             .eq("hand_id", activeHand.id)
         : Promise.resolve({ data: null }),
       activeHand
@@ -204,6 +228,19 @@ export default async function PlayRoomPage({
     !activeHand.phase_ready_at &&
     activeHand.phase !== "SHOWDOWN";
 
+  // Mood del fieltro y fondo: oscuro si no participo (FOLDED/no-IN);
+  // azul si estoy IN pero esperando turno; verde normal en cualquier
+  // otro caso (mi turno, sin mano activa, all-in viendo el showdown).
+  const isInHand =
+    myParticipant?.status === "IN" || myParticipant?.status === "ALL_IN";
+  const tableMood: "normal" | "waiting" | "out" = !activeHand
+    ? "normal"
+    : !isInHand
+      ? "out"
+      : showWaitingTurn
+        ? "waiting"
+        : "normal";
+
   // Info de la última acción para el banner del overlay
   const lastActionInfo = (() => {
     if (!lastAction) return null;
@@ -236,6 +273,8 @@ export default async function PlayRoomPage({
 
   return (
     <main className="min-h-screen p-6">
+      <BodyClass className="felt-waiting" active={tableMood === "waiting"} />
+      <BodyClass className="felt-out" active={tableMood === "out"} />
       <RealtimeRefresher roomId={room.id} />
       <WelcomeOverlay handId={activeHand?.id ?? null} />
       {activeHand && (
@@ -244,12 +283,20 @@ export default async function PlayRoomPage({
           phase={activeHand.phase}
           phaseReadyAt={activeHand.phase_ready_at ?? null}
           isDealer={false}
+          cardMode={room.card_mode}
+          myHoleCards={
+            room.card_mode === "VIRTUAL" &&
+            Array.isArray(myParticipant?.hole_cards)
+              ? (myParticipant!.hole_cards as string[])
+              : null
+          }
         />
       )}
       <WaitingWinnerOverlay
         visible={
           !!activeHand &&
           activeHand.phase === "SHOWDOWN" &&
+          room.card_mode === "PHYSICAL" &&
           (handParticipants ?? []).filter(
             (p) => p.status === "IN" || p.status === "ALL_IN",
           ).length > 1
@@ -265,6 +312,13 @@ export default async function PlayRoomPage({
         timerEnabled={room.turn_timer_enabled}
         potCop={activeHand?.pot_cop ?? 0}
         lastAction={lastActionInfo}
+        myHoleCards={
+          room.card_mode === "VIRTUAL" &&
+          Array.isArray(myParticipant?.hole_cards)
+            ? (myParticipant!.hole_cards as string[])
+            : null
+        }
+        compact={room.card_mode === "VIRTUAL"}
       />
       <WinCelebration winners={winners} />
       <WinAnnouncement winners={winners} perspectiveIsWinner={iAmAWinner} />
@@ -331,9 +385,26 @@ export default async function PlayRoomPage({
               potCop={activeHand.pot_cop}
               phase={activeHand.phase}
               handNumber={activeHand.hand_number}
+              communityCards={
+                room.card_mode === "VIRTUAL"
+                  ? ((activeHand.community_cards ?? []) as string[])
+                  : null
+              }
+              mood={tableMood}
             />
           </AnimateIn>
         )}
+
+        {activeHand &&
+          room.card_mode === "VIRTUAL" &&
+          Array.isArray(myParticipant?.hole_cards) &&
+          (myParticipant!.hole_cards as string[]).length === 2 && (
+            <AnimateIn preset="scaleIn" delay={0.14}>
+              <MyHoleCardsInline
+                cards={myParticipant!.hole_cards as string[]}
+              />
+            </AnimateIn>
+          )}
 
         {/* Estados sin mano activa: lobby de torneo / pedir fichas / solicitud pendiente */}
         {!activeHand && tournamentLobby ? (
@@ -407,3 +478,4 @@ export default async function PlayRoomPage({
     </main>
   );
 }
+

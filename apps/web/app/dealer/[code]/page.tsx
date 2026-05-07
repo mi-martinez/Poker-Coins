@@ -68,7 +68,7 @@ export default async function DealerRoomPage({
     admin
       .from("hands")
       .select(
-        "id, hand_number, dealer_seat_index, phase, pot_cop, current_turn_seat_id, phase_ready_at, started_at",
+        "id, hand_number, dealer_seat_index, phase, pot_cop, current_turn_seat_id, phase_ready_at, started_at, community_cards",
       )
       .eq("room_id", room.id)
       .is("ended_at", null)
@@ -266,6 +266,7 @@ export default async function DealerRoomPage({
           phase={activeHand.phase}
           phaseReadyAt={activeHand.phase_ready_at ?? null}
           isDealer
+          cardMode={room.card_mode}
         />
       )}
       <WinCelebration winners={winners} />
@@ -397,7 +398,14 @@ export default async function DealerRoomPage({
               </div>
 
               <div className="my-4">
-                <CommunityCards phase={activeHand.phase} />
+                <CommunityCards
+                  phase={activeHand.phase}
+                  cards={
+                    room.card_mode === "VIRTUAL"
+                      ? ((activeHand.community_cards ?? []) as string[])
+                      : null
+                  }
+                />
               </div>
 
               {roundClosed && !showdownReached && !activeHand.phase_ready_at && (
@@ -415,7 +423,18 @@ export default async function DealerRoomPage({
                 </div>
               )}
 
-              {showdownReached && (
+              {showdownReached && room.card_mode === "VIRTUAL" && (
+                <div className="mb-3 rounded-lg border border-emerald-500/40 bg-emerald-950/30 p-3 text-center">
+                  <p className="text-xs uppercase tracking-widest text-emerald-300">
+                    Showdown · resolviendo automáticamente
+                  </p>
+                  <p className="mt-1 text-[11px] text-zinc-300/70">
+                    El sistema evaluó la mejor mano y repartió el pozo.
+                  </p>
+                </div>
+              )}
+
+              {showdownReached && room.card_mode === "PHYSICAL" && (
                 <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-950/30 p-3">
                   <WinnerPicker
                     roomCode={room.code}

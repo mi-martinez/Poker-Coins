@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { formatCop } from "@poker-coins/game";
 import { Avatar } from "./avatar";
+import { HoleCardsBadge } from "./hole-cards-badge";
 
 interface LastAction {
   id: string;
@@ -23,6 +24,11 @@ interface Props {
   timerEnabled: boolean;
   potCop: number;
   lastAction: LastAction | null;
+  /** Cartas privadas del jugador en modo VIRTUAL — siempre visibles. */
+  myHoleCards?: string[] | null;
+  /** Modo compacto: en VIRTUAL la mesa debe seguir visible. Renderiza
+   * un banner flotante arriba en vez de un overlay fullscreen. */
+  compact?: boolean;
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -65,6 +71,8 @@ export function WaitingTurnOverlay({
   timerEnabled,
   potCop,
   lastAction,
+  myHoleCards,
+  compact = false,
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -180,6 +188,62 @@ export function WaitingTurnOverlay({
   const dashOffset = CIRC * (1 - progress);
   const danger = remaining !== null && remaining < 5000;
 
+  // ─── Modo compacto (VIRTUAL): banner flotante, mesa visible ────────
+  if (compact) {
+    return (
+      <div
+        ref={root}
+        role="status"
+        aria-live="polite"
+        className="pointer-events-none fixed left-1/2 top-4 z-[9300] flex -translate-x-1/2 flex-col items-center gap-2 px-4"
+      >
+        {lastAction && (
+          <div
+            ref={bannerRef}
+            className={`pointer-events-auto flex items-center gap-2 rounded-full border bg-black/80 px-4 py-1.5 text-sm backdrop-blur ${
+              ACTION_TONE[lastAction.type] ?? "text-zinc-200 border-white/20"
+            }`}
+          >
+            <span className="font-display tracking-wide">
+              {lastAction.nickname}
+            </span>
+            <span className="text-zinc-500">·</span>
+            <span className="font-semibold">
+              {ACTION_LABEL[lastAction.type] ?? lastAction.type}
+              {ACTION_NEEDS_AMOUNT.has(lastAction.type) &&
+                lastAction.amountCop > 0 && (
+                  <span className="ml-1 tabular-nums">
+                    {formatCop(lastAction.amountCop)}
+                  </span>
+                )}
+            </span>
+          </div>
+        )}
+        <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-amber-500/40 bg-black/80 py-1.5 pl-2 pr-4 backdrop-blur">
+          <Avatar nickname={nickname} avatarUrl={avatarUrl} size={28} />
+          <div className="flex flex-col leading-tight">
+            <span className="text-[9px] uppercase tracking-[0.25em] text-amber-300/70">
+              Turno
+            </span>
+            <span className="font-display text-sm font-bold tracking-wide text-amber-200">
+              {nickname}
+            </span>
+          </div>
+          {timerEnabled && seconds !== null && (
+            <span
+              className={`font-display text-2xl font-bold tabular-nums ${
+                danger ? "text-red-400" : "text-zinc-100"
+              }`}
+              aria-label={`${seconds} segundos restantes`}
+            >
+              {seconds}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={root}
@@ -276,6 +340,13 @@ export function WaitingTurnOverlay({
               size={216}
             />
           </div>
+
+          {/* Cartas privadas — solapan el borde inferior del avatar.
+              Hover o click las amplía para que el jugador pueda
+              revisarlas mientras espera. */}
+          {myHoleCards && myHoleCards.length === 2 && (
+            <HoleCardsBadge cards={myHoleCards} baseSize="sm" />
+          )}
         </div>
 
         <div ref={titleRef} className="flex flex-col items-center gap-1">
