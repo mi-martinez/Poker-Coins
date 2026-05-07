@@ -18,6 +18,10 @@ import { WinAnnouncement } from "@/app/_components/win-announcement";
 import { GameSounds } from "@/app/_components/game-sounds";
 import { MyHoleCardsInline } from "@/app/_components/my-hole-cards-inline";
 import { BodyClass } from "@/app/_components/body-class";
+import {
+  autoSeatVirtualPlayer,
+  autoStartVirtualHand,
+} from "@/lib/virtual-autoplay";
 
 export default async function PlayRoomPage({
   params,
@@ -40,6 +44,14 @@ export default async function PlayRoomPage({
   if (!room) notFound();
   if (room.dealer_user_id === user.id) {
     redirect(`/dealer/${code}` as never);
+  }
+
+  // En modo VIRTUAL: el sistema sienta automáticamente al jugador en
+  // el primer asiento libre y le entrega fichas iniciales si es CASH.
+  // Idempotente — si ya está sentado no hace nada. Lo hacemos antes
+  // del round-trip para que la página vea el seat ya asignado.
+  if (room.card_mode === "VIRTUAL" && room.status !== "CLOSED") {
+    await autoSeatVirtualPlayer(admin, room, user.id);
   }
 
   // Round-trip 1: todos los datos que solo dependen de room.id en paralelo
@@ -84,6 +96,14 @@ export default async function PlayRoomPage({
   const mySeat = (seats ?? []).find((s) => s.user_id === user.id) ?? null;
   if (!mySeat) {
     redirect("/play");
+  }
+
+  // VIRTUAL auto-start: si no hay mano viva, intenta arrancar una.
+  // Idempotente — si no hay quórum o ya hay mano, retorna sin hacer
+  // nada. La mano recién creada se reflejará en el próximo refresh
+  // que dispara el broadcast realtime.
+  if (room.card_mode === "VIRTUAL" && !activeHand && room.status !== "CLOSED") {
+    await autoStartVirtualHand(admin, room);
   }
 
   // Round-trip 2: users + hand_participants + last action + payouts del último cierre
