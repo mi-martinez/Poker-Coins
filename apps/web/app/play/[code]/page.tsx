@@ -17,6 +17,7 @@ import { WinCelebration } from "@/app/_components/win-celebration";
 import { WinAnnouncement } from "@/app/_components/win-announcement";
 import { GameSounds } from "@/app/_components/game-sounds";
 import { MyHoleCardsInline } from "@/app/_components/my-hole-cards-inline";
+import { BodyClass } from "@/app/_components/body-class";
 
 export default async function PlayRoomPage({
   params,
@@ -207,6 +208,19 @@ export default async function PlayRoomPage({
     !activeHand.phase_ready_at &&
     activeHand.phase !== "SHOWDOWN";
 
+  // Mood del fieltro y fondo: oscuro si no participo (FOLDED/no-IN);
+  // azul si estoy IN pero esperando turno; verde normal en cualquier
+  // otro caso (mi turno, sin mano activa, all-in viendo el showdown).
+  const isInHand =
+    myParticipant?.status === "IN" || myParticipant?.status === "ALL_IN";
+  const tableMood: "normal" | "waiting" | "out" = !activeHand
+    ? "normal"
+    : !isInHand
+      ? "out"
+      : showWaitingTurn
+        ? "waiting"
+        : "normal";
+
   // Info de la última acción para el banner del overlay
   const lastActionInfo = (() => {
     if (!lastAction) return null;
@@ -239,6 +253,8 @@ export default async function PlayRoomPage({
 
   return (
     <main className="min-h-screen p-6">
+      <BodyClass className="felt-waiting" active={tableMood === "waiting"} />
+      <BodyClass className="felt-out" active={tableMood === "out"} />
       <RealtimeRefresher roomId={room.id} />
       <WelcomeOverlay handId={activeHand?.id ?? null} />
       {activeHand && (
@@ -353,6 +369,7 @@ export default async function PlayRoomPage({
                   ? ((activeHand.community_cards ?? []) as string[])
                   : null
               }
+              mood={tableMood}
             />
           </AnimateIn>
         )}
