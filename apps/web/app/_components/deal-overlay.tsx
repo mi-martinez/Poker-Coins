@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { advancePhaseAction } from "@/app/_actions/phases";
-import { PlayingCard } from "./playing-card";
+import { MyHoleCardsInline } from "./my-hole-cards-inline";
 
 // Duración del countdown según la fase de origen — depende de cuántas
 // cartas físicas tiene que repartir el dealer.
@@ -198,16 +198,7 @@ function Overlay({
       )}
 
       {myHoleCards && myHoleCards.length === 2 && (
-        <div className="flex flex-col items-center gap-1.5">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-amber-300/70">
-            Tus cartas
-          </p>
-          <div className="flex gap-2.5">
-            {myHoleCards.map((c, i) => (
-              <PlayingCard key={`${c}-${i}`} code={c} size="md" />
-            ))}
-          </div>
-        </div>
+        <MyHoleCardsInline cards={myHoleCards} />
       )}
 
       <div className="relative flex h-36 w-36 items-center justify-center">

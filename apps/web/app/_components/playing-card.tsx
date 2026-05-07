@@ -1,7 +1,9 @@
 // Carta de poker visual — recibe el código de deckofcardsapi (ej.
 // "AS" = As de espadas, "0H" = 10 de corazones, "KD" = K de diamantes).
-// Usa los SVG oficiales del repo crobertsbmw/deckofcards servidos
-// vía deckofcardsapi.com/static/img/<CODE>.svg.
+// Usa los PNG oficiales del repo crobertsbmw/deckofcards (226×314 px,
+// ya cropped) servidos por deckofcardsapi.com/static/img/<CODE>.png.
+// El PNG ya tiene el fondo blanco y borde de la carta — no envolvemos
+// con white/bg/ring para evitar el efecto "carta dentro de tarjeta".
 
 interface Props {
   /** Código de 2 chars: rank ("A","2"-"9","0","J","Q","K") + suit ("S","H","D","C") */
@@ -29,7 +31,7 @@ const RANK_NAME: Record<string, string> = {
 
 const SIZE: Record<NonNullable<Props["size"]>, string> = {
   sm: "h-12 w-9",
-  md: "h-20 w-14 sm:h-24 sm:w-16",
+  md: "h-20 w-14 sm:h-24 sm:w-[68px]",
   lg: "h-28 w-20",
 };
 
@@ -45,15 +47,14 @@ export function PlayingCard({ code, size = "md", className = "" }: Props) {
   const spokenRank = RANK_NAME[rank] ?? rank;
   const spokenSuit = SUIT_NAME[suit] ?? suit;
   const dim = SIZE[size];
-  const src = `${ASSET_BASE}/${upper}.svg`;
+  const src = `${ASSET_BASE}/${upper}.png`;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt={`${spokenRank} de ${spokenSuit}`}
       draggable={false}
-      className={`select-none rounded-md bg-white shadow-lg ring-1 ring-zinc-300 ${dim} ${className}`}
-      style={{ objectFit: "contain" }}
+      className={`block select-none rounded-md shadow-lg ${dim} ${className}`}
     />
   );
 }

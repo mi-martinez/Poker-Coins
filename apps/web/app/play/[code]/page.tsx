@@ -16,7 +16,7 @@ import { WaitingTurnOverlay } from "@/app/_components/waiting-turn-overlay";
 import { WinCelebration } from "@/app/_components/win-celebration";
 import { WinAnnouncement } from "@/app/_components/win-announcement";
 import { GameSounds } from "@/app/_components/game-sounds";
-import { PlayingCard } from "@/app/_components/playing-card";
+import { MyHoleCardsInline } from "@/app/_components/my-hole-cards-inline";
 
 export default async function PlayRoomPage({
   params,
@@ -361,7 +361,9 @@ export default async function PlayRoomPage({
           Array.isArray(myParticipant?.hole_cards) &&
           (myParticipant!.hole_cards as string[]).length === 2 && (
             <AnimateIn preset="scaleIn" delay={0.14}>
-              <MyHoleCards cards={myParticipant!.hole_cards as string[]} />
+              <MyHoleCardsInline
+                cards={myParticipant!.hole_cards as string[]}
+              />
             </AnimateIn>
           )}
 
@@ -438,22 +440,3 @@ export default async function PlayRoomPage({
   );
 }
 
-// Cartas privadas del jugador en modo VIRTUAL. Sólo se renderizan si la
-// página tiene hole_cards en el participante actual.
-function MyHoleCards({ cards }: { cards: string[] }) {
-  return (
-    <section
-      className="flex flex-col items-center gap-2 rounded-2xl border border-amber-600/30 bg-amber-950/15 px-4 py-3"
-      aria-label="Tus cartas"
-    >
-      <p className="text-[10px] uppercase tracking-[0.3em] text-amber-300/70">
-        Tus cartas
-      </p>
-      <div className="flex gap-3">
-        {cards.map((c, i) => (
-          <PlayingCard key={`${c}-${i}`} code={c} size="lg" />
-        ))}
-      </div>
-    </section>
-  );
-}
