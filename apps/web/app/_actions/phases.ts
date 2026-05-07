@@ -178,18 +178,44 @@ async function resolveVirtualShowdown(admin: AdminClient, handId: string) {
   }
 
   // Si solo queda un contender (el resto foldeó), gana sin evaluar.
+  // En cualquier otro caso necesitamos board de 5 cartas y 2 hole
+  // cards por contender; si la API falló y el estado quedó incompleto,
+  // abortamos en vez de pagar mal el pozo. La mano queda en SHOWDOWN
+  // sin ended_at y el dealer puede resolver manualmente.
   let winnerSeatIds: string[];
   if (contenders.length === 1) {
     winnerSeatIds = [contenders[0]!.seat_id];
   } else {
-    const result = evaluateShowdown(
-      contenders.map((c) => ({
-        seatId: c.seat_id,
-        holeCards: c.hole_cards as string[],
-      })),
-      community,
+    if (community.length !== 5) {
+      console.error(
+        `[resolveShowdown] board incompleto (${community.length}/5) — aborto auto-resolución`,
+      );
+      return;
+    }
+    const allHaveHoleCards = contenders.every(
+      (c) =>
+        Array.isArray(c.hole_cards) &&
+        (c.hole_cards as unknown[]).length === 2,
     );
-    winnerSeatIds = result.winnerSeatIds;
+    if (!allHaveHoleCards) {
+      console.error(
+        "[resolveShowdown] algún contender sin hole cards — aborto auto-resolución",
+      );
+      return;
+    }
+    try {
+      const result = evaluateShowdown(
+        contenders.map((c) => ({
+          seatId: c.seat_id,
+          holeCards: c.hole_cards as string[],
+        })),
+        community,
+      );
+      winnerSeatIds = result.winnerSeatIds;
+    } catch (e) {
+      console.error("[resolveShowdown] evaluateShowdown lanzó:", e);
+      return;
+    }
   }
 
   if (winnerSeatIds.length === 0) return;
@@ -231,7 +257,7 @@ async function resolveVirtualShowdown(admin: AdminClient, handId: string) {
       seat_id: w.seat_id,
       delta_cop: w.amount,
       hand_id: hand.id,
-      reason: "POT_WON",
+      reason: "POT_WIN",
     })),
   );
 

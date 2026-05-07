@@ -17,6 +17,22 @@ const SUIT_GLYPH: Record<string, string> = {
   C: "♣",
 };
 
+const SUIT_NAME: Record<string, string> = {
+  S: "espadas",
+  H: "corazones",
+  D: "diamantes",
+  C: "tréboles",
+};
+
+const RANK_NAME: Record<string, string> = {
+  A: "As",
+  K: "Rey",
+  Q: "Reina",
+  J: "Jota",
+  "0": "10",
+  T: "10",
+};
+
 const SUIT_RED = new Set(["H", "D"]);
 
 const SIZE: Record<NonNullable<Props["size"]>, { wrap: string; rank: string; suit: string }> = {
@@ -50,10 +66,12 @@ export function PlayingCard({ code, size = "md", className = "" }: Props) {
   const suit = code[code.length - 1]!.toUpperCase();
   const isRed = SUIT_RED.has(suit);
   const dim = SIZE[size];
+  const spokenRank = RANK_NAME[rank] ?? rank;
+  const spokenSuit = SUIT_NAME[suit] ?? suit;
   return (
     <div
       className={`relative flex flex-col items-center justify-center rounded-md border-2 border-zinc-300 bg-gradient-to-br from-white to-zinc-100 shadow-lg ${dim.wrap} ${className}`}
-      aria-label={`${displayRank(rank)} de ${suit}`}
+      aria-label={`${spokenRank} de ${spokenSuit}`}
     >
       <span
         className={`font-display font-bold tabular-nums ${dim.rank} ${
