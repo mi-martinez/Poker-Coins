@@ -13,6 +13,7 @@ export type Json =
 
 export type RoomStatus = "LOBBY" | "ACTIVE" | "PAUSED" | "CLOSED";
 export type GameType = "CASH" | "TOURNAMENT";
+export type CardMode = "PHYSICAL" | "VIRTUAL";
 export type SeatStatus = "WAITING" | "ACTIVE" | "SITTING_OUT" | "LEFT";
 export type ChipRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type HandPhase =
@@ -70,6 +71,7 @@ export type Database = {
           max_seats: number;
           name: string | null;
           game_type: GameType;
+          card_mode: CardMode;
           min_buy_in_cop: number | null;
           tournament_cost_cop: number | null;
           rebuy_enabled: boolean;
@@ -89,6 +91,7 @@ export type Database = {
           max_seats?: number;
           name?: string | null;
           game_type?: GameType;
+          card_mode?: CardMode;
           min_buy_in_cop?: number | null;
           tournament_cost_cop?: number | null;
           rebuy_enabled?: boolean;
@@ -108,6 +111,7 @@ export type Database = {
           max_seats?: number;
           name?: string | null;
           game_type?: GameType;
+          card_mode?: CardMode;
           min_buy_in_cop?: number | null;
           tournament_cost_cop?: number | null;
           rebuy_enabled?: boolean;
@@ -193,6 +197,8 @@ export type Database = {
           current_turn_seat_id: string | null;
           phase_ready_at: string | null;
           turn_started_at: string | null;
+          deck_id: string | null;
+          community_cards: Json | null;
           started_at: string;
           ended_at: string | null;
         };
@@ -206,6 +212,8 @@ export type Database = {
           current_turn_seat_id?: string | null;
           phase_ready_at?: string | null;
           turn_started_at?: string | null;
+          deck_id?: string | null;
+          community_cards?: Json | null;
           started_at?: string;
           ended_at?: string | null;
         };
@@ -219,6 +227,8 @@ export type Database = {
           current_turn_seat_id?: string | null;
           phase_ready_at?: string | null;
           turn_started_at?: string | null;
+          deck_id?: string | null;
+          community_cards?: Json | null;
           started_at?: string;
           ended_at?: string | null;
         };
@@ -232,6 +242,7 @@ export type Database = {
           status: ParticipantStatus;
           current_bet_cop: number;
           total_bet_cop: number;
+          hole_cards: Json | null;
         };
         Insert: {
           id?: string;
@@ -240,6 +251,7 @@ export type Database = {
           status?: ParticipantStatus;
           current_bet_cop?: number;
           total_bet_cop?: number;
+          hole_cards?: Json | null;
         };
         Update: {
           id?: string;
@@ -248,6 +260,7 @@ export type Database = {
           status?: ParticipantStatus;
           current_bet_cop?: number;
           total_bet_cop?: number;
+          hole_cards?: Json | null;
         };
         Relationships: [];
       };
@@ -350,6 +363,7 @@ export type Database = {
       participant_status: ParticipantStatus;
       action_type: ActionType;
       game_type: GameType;
+      card_mode: CardMode;
     };
     CompositeTypes: {
       [_ in never]: never;

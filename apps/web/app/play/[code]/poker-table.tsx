@@ -38,6 +38,8 @@ interface Props {
   potCop: number;
   phase: Phase;
   handNumber: number;
+  /** Modo VIRTUAL: códigos de las cartas comunitarias (deckofcardsapi). */
+  communityCards?: string[] | null;
 }
 
 // Mesa 2D estilo cenital (referencia: PokerStars). Plana, sin
@@ -51,6 +53,7 @@ export function PokerTable({
   potCop,
   phase,
   handNumber,
+  communityCards,
 }: Props) {
   void mySeatIndex;
   const occupied = seats.filter((s) => s.userId);
@@ -110,7 +113,7 @@ export function PokerTable({
           {formatCop(potCop)}
         </div>
         <div className="scale-[0.55] sm:scale-[0.65]">
-          <CommunityCards phase={phase} />
+          <CommunityCards phase={phase} cards={communityCards ?? null} />
         </div>
         <div className="text-[8px] font-semibold uppercase tracking-[0.3em] text-zinc-100/60">
           #{handNumber} · {phase}

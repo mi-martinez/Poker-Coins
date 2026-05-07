@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { PlayingCard } from "./playing-card";
 
 type Phase =
   | "PREFLOP"
@@ -21,22 +22,29 @@ const CARDS_FOR_PHASE: Record<Phase, number> = {
   COMPLETE: 5,
 };
 
-// Indicador visual del street actual (las cartas reales son físicas).
-// 5 slots fijos; los repartidos según la fase se ven como cartas con
-// dorso de fieltro; los no repartidos como slots punteados. Las
-// recién repartidas en una nueva fase animan deal-in con GSAP.
-export function CommunityCards({ phase }: { phase: Phase }) {
+interface Props {
+  phase: Phase;
+  /** Si está presente, modo VIRTUAL: muestra las cartas reales recibidas. */
+  cards?: string[] | null;
+}
+
+// Indicador del street actual. En modo PHYSICAL muestra dorsos genéricos
+// (las cartas reales están en la mesa). En modo VIRTUAL recibe `cards`
+// con los códigos de deckofcardsapi y los renderiza con palo + rank.
+export function CommunityCards({ phase, cards }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const prevCount = useRef<number>(0);
-  const targetCount = CARDS_FOR_PHASE[phase] ?? 0;
+  const dealtCount =
+    cards && cards.length > 0 ? cards.length : (CARDS_FOR_PHASE[phase] ?? 0);
+  const targetCount = Math.min(dealtCount, 5);
 
   useGSAP(
     () => {
       const el = root.current;
       if (!el) return;
-      const cards = el.querySelectorAll<HTMLDivElement>("[data-card-dealt]");
+      const els = el.querySelectorAll<HTMLDivElement>("[data-card-dealt]");
       const newly: HTMLDivElement[] = [];
-      cards.forEach((card) => {
+      els.forEach((card) => {
         const idx = Number(card.dataset.idx ?? "-1");
         if (idx >= prevCount.current && idx < targetCount) newly.push(card);
       });
@@ -77,14 +85,16 @@ export function CommunityCards({ phase }: { phase: Phase }) {
             />
           );
         }
+        const code = cards?.[i];
         return (
-          <div
-            key={i}
-            data-card-dealt
-            data-idx={i}
-            className="relative h-20 w-14 rounded-md border-2 border-zinc-200 bg-gradient-to-br from-zinc-100 to-zinc-300 shadow-lg sm:h-24 sm:w-16"
-          >
-            <div className="absolute inset-1 rounded-sm bg-gradient-to-br from-felt-dark to-felt opacity-90" />
+          <div key={i} data-card-dealt data-idx={i}>
+            {code ? (
+              <PlayingCard code={code} size="md" />
+            ) : (
+              <div className="relative h-20 w-14 rounded-md border-2 border-zinc-200 bg-gradient-to-br from-zinc-100 to-zinc-300 shadow-lg sm:h-24 sm:w-16">
+                <div className="absolute inset-1 rounded-sm bg-gradient-to-br from-felt-dark to-felt opacity-90" />
+              </div>
+            )}
           </div>
         );
       })}

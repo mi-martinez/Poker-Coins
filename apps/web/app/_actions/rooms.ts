@@ -39,6 +39,9 @@ export async function createRoomAction(
   const maxRebuys = Number(formData.get("max_rebuys") || 0);
   const turnTimerEnabled = formData.get("turn_timer_enabled") === "on";
   const turnTimerSeconds = Number(formData.get("turn_timer_seconds") || 30);
+  const cardMode = String(formData.get("card_mode") ?? "PHYSICAL") as
+    | "PHYSICAL"
+    | "VIRTUAL";
 
   // Validaciones comunes
   if (!Number.isFinite(blindSmall) || blindSmall <= 0 || blindSmall % 500 !== 0) {
@@ -52,6 +55,9 @@ export async function createRoomAction(
   }
   if (gameType !== "CASH" && gameType !== "TOURNAMENT") {
     return { error: "Tipo de juego inválido." };
+  }
+  if (cardMode !== "PHYSICAL" && cardMode !== "VIRTUAL") {
+    return { error: "Modo de cartas inválido." };
   }
   if (
     turnTimerEnabled &&
@@ -69,6 +75,7 @@ export async function createRoomAction(
     blind_big_cop: blindBig,
     max_seats: maxSeats,
     game_type: gameType,
+    card_mode: cardMode,
     turn_timer_enabled: turnTimerEnabled,
     turn_timer_seconds: turnTimerEnabled ? turnTimerSeconds : 30,
     name: randomGreekName(),

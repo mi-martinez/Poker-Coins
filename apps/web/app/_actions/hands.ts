@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth-server";
+import { createDeck, drawCardCodes } from "@/lib/deck";
 
 interface SeatLite {
   id: string;
@@ -35,7 +36,7 @@ export async function startHandAction(
 
   const { data: room } = await admin
     .from("rooms")
-    .select("id, dealer_user_id, status, blind_small_cop, blind_big_cop")
+    .select("id, dealer_user_id, status, blind_small_cop, blind_big_cop, card_mode")
     .eq("code", roomCode)
     .maybeSingle();
   if (!room) return { error: "Sala no encontrada." };
@@ -103,6 +104,26 @@ export async function startHandAction(
   const sbAmount = Math.min(room.blind_small_cop, sbSeat.chips_balance_cop);
   const bbAmount = Math.min(room.blind_big_cop, bbSeat.chips_balance_cop);
 
+  // En modo VIRTUAL: creamos un deck nuevo y repartimos 2 hole cards
+  // por jugador. Si la API falla, fallamos rápido — no caemos a modo
+  // físico silenciosamente porque cambiaría las reglas del juego en
+  // medio de la sala.
+  let deckId: string | null = null;
+  const holeCardsBySeat = new Map<string, string[]>();
+  if (room.card_mode === "VIRTUAL") {
+    try {
+      deckId = await createDeck();
+      const allCards = await drawCardCodes(deckId, seats.length * 2);
+      seats.forEach((s, i) => {
+        holeCardsBySeat.set(s.id, [allCards[i * 2]!, allCards[i * 2 + 1]!]);
+      });
+    } catch (e) {
+      return {
+        error: `No se pudo crear el mazo virtual: ${e instanceof Error ? e.message : "?"}`,
+      };
+    }
+  }
+
   // Crear la mano
   const { data: hand, error: handErr } = await admin
     .from("hands")
@@ -114,6 +135,8 @@ export async function startHandAction(
       pot_cop: sbAmount + bbAmount,
       current_turn_seat_id: firstToActSeat.id,
       turn_started_at: new Date().toISOString(),
+      deck_id: deckId,
+      community_cards: room.card_mode === "VIRTUAL" ? [] : null,
     })
     .select("id")
     .single();
@@ -130,6 +153,7 @@ export async function startHandAction(
       s.id === sbSeat.id ? sbAmount : s.id === bbSeat.id ? bbAmount : 0,
     total_bet_cop:
       s.id === sbSeat.id ? sbAmount : s.id === bbSeat.id ? bbAmount : 0,
+    hole_cards: holeCardsBySeat.get(s.id) ?? null,
   }));
   await admin.from("hand_participants").insert(participantsPayload);
 

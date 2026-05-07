@@ -87,7 +87,14 @@ importers:
         version: 5.9.3
 
   packages/game:
+    dependencies:
+      pokersolver:
+        specifier: ^2.1.4
+        version: 2.1.4
     devDependencies:
+      '@types/node':
+        specifier: ^22.19.17
+        version: 22.19.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -1359,6 +1366,10 @@ packages:
     resolution: {integrity: sha512-C8oWjPR3F81yljW9o5OxcWzfh6avkVwDD2VYdwIGqTkl+OGFISgypqzfu7dOe4QNLL2aqcWBmI3PMtLIK233lw==}
     engines: {node: '>=18'}
     hasBin: true
+
+  pokersolver@2.1.4:
+    resolution: {integrity: sha512-vmgZS+K8H8r1RePQykFM5YyvlKo1v3xVec8FMBjg9N6mR2Tj/n/X415w+lG67FWbrk71D/CADmKFinDgaQlAsw==}
+    engines: {'0': node >= 4.0.0}
 
   postcss-import@15.1.0:
     resolution: {integrity: sha512-hpr+J05B2FVYUAXHeK1YyI267J/dDDhMU6B6civm8hSY1jYJnBXxzKDKDswzJmtLHryrjhnDjqqp/49t8FALew==}
@@ -3088,6 +3099,8 @@ snapshots:
       playwright-core: 1.59.1
     optionalDependencies:
       fsevents: 2.3.2
+
+  pokersolver@2.1.4: {}
 
   postcss-import@15.1.0(postcss@8.5.14):
     dependencies:

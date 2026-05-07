@@ -16,6 +16,7 @@ export function CreateRoomForm() {
     initialState,
   );
   const [gameType, setGameType] = useState<GameType>("CASH");
+  const [cardMode, setCardMode] = useState<"PHYSICAL" | "VIRTUAL">("PHYSICAL");
   const [rebuyEnabled, setRebuyEnabled] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(true);
 
@@ -129,6 +130,30 @@ export function CreateRoomForm() {
           )}
         </fieldset>
       )}
+
+      <fieldset className="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3">
+        <legend className="px-2 text-xs uppercase tracking-widest text-zinc-400">
+          Cartas
+        </legend>
+        <div className="flex gap-2">
+          <RadioCard
+            checked={cardMode === "PHYSICAL"}
+            onChange={() => setCardMode("PHYSICAL")}
+            name="card_mode"
+            value="PHYSICAL"
+            title="Cartas reales"
+            sub="El dealer humano reparte y declara ganador"
+          />
+          <RadioCard
+            checked={cardMode === "VIRTUAL"}
+            onChange={() => setCardMode("VIRTUAL")}
+            name="card_mode"
+            value="VIRTUAL"
+            title="Cartas virtuales"
+            sub="El sistema reparte y resuelve automáticamente"
+          />
+        </div>
+      </fieldset>
 
       <fieldset className="flex flex-col gap-3 rounded-lg border border-zinc-800 p-3">
         <legend className="px-2 text-xs uppercase tracking-widest text-zinc-400">

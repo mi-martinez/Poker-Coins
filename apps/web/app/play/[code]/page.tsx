@@ -16,6 +16,7 @@ import { WaitingTurnOverlay } from "@/app/_components/waiting-turn-overlay";
 import { WinCelebration } from "@/app/_components/win-celebration";
 import { WinAnnouncement } from "@/app/_components/win-announcement";
 import { GameSounds } from "@/app/_components/game-sounds";
+import { PlayingCard } from "@/app/_components/playing-card";
 
 export default async function PlayRoomPage({
   params,
@@ -64,7 +65,7 @@ export default async function PlayRoomPage({
     admin
       .from("hands")
       .select(
-        "id, hand_number, dealer_seat_index, phase, pot_cop, current_turn_seat_id, phase_ready_at, turn_started_at",
+        "id, hand_number, dealer_seat_index, phase, pot_cop, current_turn_seat_id, phase_ready_at, turn_started_at, community_cards",
       )
       .eq("room_id", room.id)
       .is("ended_at", null)
@@ -109,7 +110,9 @@ export default async function PlayRoomPage({
       activeHand
         ? admin
             .from("hand_participants")
-            .select("id, seat_id, status, current_bet_cop, total_bet_cop")
+            .select(
+              "id, seat_id, status, current_bet_cop, total_bet_cop, hole_cards",
+            )
             .eq("hand_id", activeHand.id)
         : Promise.resolve({ data: null }),
       activeHand
@@ -250,6 +253,7 @@ export default async function PlayRoomPage({
         visible={
           !!activeHand &&
           activeHand.phase === "SHOWDOWN" &&
+          room.card_mode === "PHYSICAL" &&
           (handParticipants ?? []).filter(
             (p) => p.status === "IN" || p.status === "ALL_IN",
           ).length > 1
@@ -331,9 +335,23 @@ export default async function PlayRoomPage({
               potCop={activeHand.pot_cop}
               phase={activeHand.phase}
               handNumber={activeHand.hand_number}
+              communityCards={
+                room.card_mode === "VIRTUAL"
+                  ? ((activeHand.community_cards ?? []) as string[])
+                  : null
+              }
             />
           </AnimateIn>
         )}
+
+        {activeHand &&
+          room.card_mode === "VIRTUAL" &&
+          Array.isArray(myParticipant?.hole_cards) &&
+          (myParticipant!.hole_cards as string[]).length === 2 && (
+            <AnimateIn preset="scaleIn" delay={0.14}>
+              <MyHoleCards cards={myParticipant!.hole_cards as string[]} />
+            </AnimateIn>
+          )}
 
         {/* Estados sin mano activa: lobby de torneo / pedir fichas / solicitud pendiente */}
         {!activeHand && tournamentLobby ? (
@@ -405,5 +423,25 @@ export default async function PlayRoomPage({
 
       </div>
     </main>
+  );
+}
+
+// Cartas privadas del jugador en modo VIRTUAL. Sólo se renderizan si la
+// página tiene hole_cards en el participante actual.
+function MyHoleCards({ cards }: { cards: string[] }) {
+  return (
+    <section
+      className="flex flex-col items-center gap-2 rounded-2xl border border-amber-600/30 bg-amber-950/15 px-4 py-3"
+      aria-label="Tus cartas"
+    >
+      <p className="text-[10px] uppercase tracking-[0.3em] text-amber-300/70">
+        Tus cartas
+      </p>
+      <div className="flex gap-3">
+        {cards.map((c, i) => (
+          <PlayingCard key={`${c}-${i}`} code={c} size="lg" />
+        ))}
+      </div>
+    </section>
   );
 }

@@ -4,3 +4,4 @@ export * from "./phase";
 export * from "./betting";
 export * from "./room-code";
 export * from "./greek-names";
+export * from "./hand-evaluator";
