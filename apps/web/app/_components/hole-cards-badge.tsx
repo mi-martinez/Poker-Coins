@@ -6,7 +6,7 @@ import { PlayingCard } from "./playing-card";
 interface Props {
   cards: string[];
   /** Tamaño base (cuando no está expandido) */
-  baseSize?: "sm" | "md";
+  baseSize?: "sm" | "md" | "lg";
   /** className extra para el wrapper absoluto */
   className?: string;
 }
@@ -18,7 +18,7 @@ interface Props {
 // táctiles donde no hay hover.
 export function HoleCardsBadge({
   cards,
-  baseSize = "sm",
+  baseSize = "md",
   className = "",
 }: Props) {
   const [pinned, setPinned] = useState(false);

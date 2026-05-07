@@ -281,6 +281,7 @@ export default async function PlayRoomPage({
             ? (myParticipant!.hole_cards as string[])
             : null
         }
+        compact={room.card_mode === "VIRTUAL"}
       />
       <WinCelebration winners={winners} />
       <WinAnnouncement winners={winners} perspectiveIsWinner={iAmAWinner} />

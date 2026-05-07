@@ -9,7 +9,7 @@ interface Props {
   /** Código de 2 chars: rank ("A","2"-"9","0","J","Q","K") + suit ("S","H","D","C") */
   code: string;
   /** Tamaño en clases Tailwind */
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 
@@ -30,9 +30,10 @@ const RANK_NAME: Record<string, string> = {
 };
 
 const SIZE: Record<NonNullable<Props["size"]>, string> = {
-  sm: "h-12 w-9",
-  md: "h-20 w-14 sm:h-24 sm:w-[68px]",
-  lg: "h-28 w-20",
+  sm: "h-14 w-10",
+  md: "h-24 w-[68px] sm:h-28 sm:w-20",
+  lg: "h-32 w-24",
+  xl: "h-40 w-28",
 };
 
 const ASSET_BASE = "https://deckofcardsapi.com/static/img";
