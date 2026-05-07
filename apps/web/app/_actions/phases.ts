@@ -52,8 +52,13 @@ export async function advancePhaseAction(
   }
   const nextPhase = PHASE_ORDER[idx + 1] as Phase;
 
-  // Calcular primer turno de la nueva fase: primer IN después del dealer
+  // Calcular primer turno de la nueva fase: primer IN después del dealer.
+  // Si quedan ≤1 IN ya no hay apuestas posibles (los demás están
+  // ALL_IN o foldearon) — encadenamos directo al siguiente avance
+  // marcando phase_ready_at=now para que el DealOverlay dispare la
+  // próxima transición tras la animación.
   let firstToActId: string | null = null;
+  let chainNextAdvance = false;
   if (nextPhase !== "SHOWDOWN") {
     const [{ data: parts }, { data: seatsList }] = await Promise.all([
       admin
@@ -70,13 +75,16 @@ export async function advancePhaseAction(
     );
     const inSeats = (seatsList ?? []).filter((s) => inSeatIds.has(s.id));
 
-    if (inSeats.length > 0) {
+    if (inSeats.length >= 2) {
       const ordered = [...inSeats].sort((a, b) => {
         const aDist = (a.seat_index - hand.dealer_seat_index + 1000) % 1000;
         const bDist = (b.seat_index - hand.dealer_seat_index + 1000) % 1000;
         return aDist - bDist;
       });
       firstToActId = (ordered[1] ?? ordered[0])?.id ?? null;
+    } else {
+      // 0 o 1 IN: no hay betting posible esta fase. Encadenar.
+      chainNextAdvance = true;
     }
   }
 
@@ -87,7 +95,7 @@ export async function advancePhaseAction(
     .update({
       phase: nextPhase,
       current_turn_seat_id: firstToActId,
-      phase_ready_at: null,
+      phase_ready_at: chainNextAdvance ? new Date().toISOString() : null,
       turn_started_at: firstToActId ? new Date().toISOString() : null,
     })
     .eq("id", hand.id)

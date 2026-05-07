@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth-server";
+import { isBettingClosed, nextActorSeatId } from "@/lib/turn-logic";
 
 interface SeatLite {
   id: string;
@@ -13,29 +14,6 @@ interface ParticipantLite {
   seat_id: string;
   status: "IN" | "FOLDED" | "ALL_IN";
   current_bet_cop: number;
-}
-
-// Calcula siguiente turno cíclico desde dealer button (solo IN).
-function nextTurnSeatId(
-  seats: SeatLite[],
-  participants: ParticipantLite[],
-  fromSeatId: string,
-  dealerSeatIdx: number,
-): string | null {
-  const inSeats = seats.filter((s) => {
-    const p = participants.find((pp) => pp.seat_id === s.id);
-    return p && p.status === "IN";
-  });
-  if (inSeats.length <= 1) return null;
-  const ordered = [...inSeats].sort((a, b) => {
-    const aDist = (a.seat_index - dealerSeatIdx + 1000) % 1000;
-    const bDist = (b.seat_index - dealerSeatIdx + 1000) % 1000;
-    return aDist - bDist;
-  });
-  const idx = ordered.findIndex((s) => s.id === fromSeatId);
-  if (idx === -1) return ordered[0]!.id;
-  const next = ordered[(idx + 1) % ordered.length];
-  return next ? next.id : null;
 }
 
 // ─── Dealer foldea por un jugador (AFK / desconectado) ───────────────
@@ -148,12 +126,28 @@ export async function dealerForceFoldAction(formData: FormData) {
     return;
   }
 
-  // Avance normal de turno (si era el turno del foldeado, pasar al siguiente IN)
-  const inOnly = participants.filter((p) => p.status === "IN");
-  let nextTurn: string | null = hand.current_turn_seat_id;
+  // Avance de turno: idéntica lógica a play.ts. SB/BB se filtran
+  // (acciones forzadas, no cuentan como turno voluntario). El fold
+  // sí cuenta — se inserta arriba con type=FOLD.
+  const { data: phaseActions } = await admin
+    .from("actions")
+    .select("seat_id, type")
+    .eq("hand_id", hand.id)
+    .eq("phase", hand.phase);
+  const seatsActed = new Set(
+    (phaseActions ?? [])
+      .filter((a) => a.type !== "SMALL_BLIND" && a.type !== "BIG_BLIND")
+      .map((a) => a.seat_id),
+  );
+  seatsActed.add(seatId);
 
-  if (hand.current_turn_seat_id === seatId) {
-    nextTurn = nextTurnSeatId(
+  let nextTurn: string | null = null;
+  if (!isBettingClosed(participants, seatsActed)) {
+    // Pivot: si el foldeado tenía el turno, el actor "from" es él;
+    // si era otro turno, conservamos ese turno (no debería pasar
+    // porque solo se foldea por timeout del actor — pero por
+    // seguridad calculamos el siguiente desde su seat).
+    nextTurn = nextActorSeatId(
       seatsList,
       participants,
       seatId,
@@ -161,19 +155,11 @@ export async function dealerForceFoldAction(formData: FormData) {
     );
   }
 
-  // ¿Ronda cerrada por el fold?
-  const maxBet = Math.max(...inOnly.map((p) => p.current_bet_cop), 0);
-  const allMatch = inOnly.every((p) => p.current_bet_cop === maxBet);
-  const noMoreBetting = inOnly.length <= 1;
   const canAutoAdvance = ["PREFLOP", "FLOP", "TURN", "RIVER"].includes(
     hand.phase,
   );
-
-  let phaseReadyAt: string | null = null;
-  if ((noMoreBetting || (allMatch && nextTurn === null)) && canAutoAdvance) {
-    nextTurn = null;
-    phaseReadyAt = new Date().toISOString();
-  }
+  const phaseReadyAt =
+    nextTurn === null && canAutoAdvance ? new Date().toISOString() : null;
 
   await admin
     .from("hands")
