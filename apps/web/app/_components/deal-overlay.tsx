@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { advancePhaseAction } from "@/app/_actions/phases";
+import { PlayingCard } from "./playing-card";
 
 // Duración del countdown según la fase de origen — depende de cuántas
 // cartas físicas tiene que repartir el dealer.
@@ -35,9 +36,17 @@ interface Props {
   // Solo el dealer dispara el avance al expirar el countdown — los
   // jugadores ven la animación y esperan el data refresh.
   isDealer: boolean;
+  /** Cartas privadas del jugador en VIRTUAL — siempre a la vista. */
+  myHoleCards?: string[] | null;
 }
 
-export function DealOverlay({ roomCode, phase, phaseReadyAt, isDealer }: Props) {
+export function DealOverlay({
+  roomCode,
+  phase,
+  phaseReadyAt,
+  isDealer,
+  myHoleCards,
+}: Props) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const fired = useRef(false);
@@ -85,6 +94,7 @@ export function DealOverlay({ roomCode, phase, phaseReadyAt, isDealer }: Props) 
       seconds={seconds}
       cardsCount={cardsCount}
       progress={totalProgress}
+      myHoleCards={myHoleCards}
     />
   );
 }
@@ -94,11 +104,13 @@ function Overlay({
   seconds,
   cardsCount,
   progress,
+  myHoleCards,
 }: {
   label: string;
   seconds: number;
   cardsCount: number;
   progress: number;
+  myHoleCards?: string[] | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -182,6 +194,19 @@ function Overlay({
               <div className="absolute inset-1.5 rounded-md bg-gradient-to-br from-felt-dark to-felt opacity-90" />
             </div>
           ))}
+        </div>
+      )}
+
+      {myHoleCards && myHoleCards.length === 2 && (
+        <div className="flex flex-col items-center gap-1.5">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-amber-300/70">
+            Tus cartas
+          </p>
+          <div className="flex gap-2.5">
+            {myHoleCards.map((c, i) => (
+              <PlayingCard key={`${c}-${i}`} code={c} size="md" />
+            ))}
+          </div>
         </div>
       )}
 

@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { formatCop } from "@poker-coins/game";
 import { Avatar } from "./avatar";
+import { PlayingCard } from "./playing-card";
 
 interface LastAction {
   id: string;
@@ -23,6 +24,8 @@ interface Props {
   timerEnabled: boolean;
   potCop: number;
   lastAction: LastAction | null;
+  /** Cartas privadas del jugador en modo VIRTUAL — siempre visibles. */
+  myHoleCards?: string[] | null;
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -65,6 +68,7 @@ export function WaitingTurnOverlay({
   timerEnabled,
   potCop,
   lastAction,
+  myHoleCards,
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -215,6 +219,21 @@ export function WaitingTurnOverlay({
 
       {/* Hero: avatar central como pieza del diseño con halo + frame */}
       <div className="flex flex-col items-center gap-5">
+        {/* Cartas del jugador encima del avatar — siempre visibles
+            mientras espera turno (modo VIRTUAL). */}
+        {myHoleCards && myHoleCards.length === 2 && (
+          <div className="flex flex-col items-center gap-1.5">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-amber-300/70">
+              Tus cartas
+            </p>
+            <div className="flex gap-2.5">
+              {myHoleCards.map((c, i) => (
+                <PlayingCard key={`${c}-${i}`} code={c} size="md" />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div
           ref={avatarWrapRef}
           className="relative flex h-72 w-72 items-center justify-center"

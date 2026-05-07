@@ -247,6 +247,12 @@ export default async function PlayRoomPage({
           phase={activeHand.phase}
           phaseReadyAt={activeHand.phase_ready_at ?? null}
           isDealer={false}
+          myHoleCards={
+            room.card_mode === "VIRTUAL" &&
+            Array.isArray(myParticipant?.hole_cards)
+              ? (myParticipant!.hole_cards as string[])
+              : null
+          }
         />
       )}
       <WaitingWinnerOverlay
@@ -269,6 +275,12 @@ export default async function PlayRoomPage({
         timerEnabled={room.turn_timer_enabled}
         potCop={activeHand?.pot_cop ?? 0}
         lastAction={lastActionInfo}
+        myHoleCards={
+          room.card_mode === "VIRTUAL" &&
+          Array.isArray(myParticipant?.hole_cards)
+            ? (myParticipant!.hole_cards as string[])
+            : null
+        }
       />
       <WinCelebration winners={winners} />
       <WinAnnouncement winners={winners} perspectiveIsWinner={iAmAWinner} />
